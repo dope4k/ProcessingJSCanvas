@@ -1,10 +1,12 @@
 import * as p5 from 'p5';
+import { Vector } from 'p5';
 import Context, { ContextObject } from '../Base/Context';
 import OnMouseButton from '../Base/Events/OnMouseButton';
-import OnMouseWheel from '../Base/Events/OnMouseWheel';
-import { Renderable } from '../Base/Renderer';
-import { Vector } from 'p5';
 import OnMouseMove from '../Base/Events/OnMouseMove';
+import { Renderable } from '../Base/Renderer';
+
+export interface Selectable {}
+
 export default class SelectionTool
   implements ContextObject, Renderable, OnMouseButton, OnMouseMove
 {
@@ -17,8 +19,13 @@ export default class SelectionTool
     button: string,
     state: 'PRESSED' | 'RELEASED' | 'CLICKED'
   ): boolean {
-    if (button === 'left' && state === 'PRESSED') this.dragStart = position;
-    else if (state === 'RELEASED') this.dragStart = undefined; //TODO: Find all objects selected by tool
+    if (button === 'left' && state === 'PRESSED') {
+      this.dragStart = position;
+    } else if (state === 'RELEASED') {
+      //TODO: Find all objects selected by tool
+      this.dragStart = undefined;
+      this.dragEnd = undefined;
+    }
     return true;
   }
   OnMouseMove(position: p5.Vector, button?: string | undefined): void {

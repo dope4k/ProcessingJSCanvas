@@ -1,7 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import Context from '../../logic/Base/Context';
 import Table from '../../logic/Components/Table';
-import SelectionTool from '../../logic/Tools/SelectionTool';
 
 @Component({
   selector: 'app-processing-canvas',
@@ -15,10 +14,7 @@ export class ProcessingCanvasComponent implements OnInit {
     this.context.InitRenderer();
 
     const table = new Table();
-    table.CreateTable(200, 200, 5, 3);
-    const selectionTool = new SelectionTool();
-
+    table.CreateTable(150, 150, 3, 3, 200);
     this.context.AddObject(table);
-    this.context.AddObject(selectionTool);
   }
 }

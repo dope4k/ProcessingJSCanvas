@@ -26,14 +26,14 @@ export default class Table implements ContextObject, Renderable {
     return this.edges.find((e) => e.Equal(edge));
   }
 
-  private addNode(node: Node) {
+  AddNode(node: Node) {
     const graphNode = this.findNode(node);
     if (graphNode) return graphNode;
     else this.nodes.push(node);
     return node;
   }
 
-  private addEdge(edge: Edge) {
+  AddEdge(edge: Edge) {
     const graphEdge = this.findEdge(edge);
     if (graphEdge) return graphEdge;
     else this.edges.push(edge);
@@ -41,9 +41,10 @@ export default class Table implements ContextObject, Renderable {
   }
 
   AddLink(pointA: Node, pointB: Node) {
-    pointA = this.addNode(pointA);
-    pointB = this.addNode(pointB);
-    const edge = new Edge(pointA, pointB);
+    pointA = this.AddNode(pointA);
+    pointB = this.AddNode(pointB);
+    let edge = new Edge(this, pointA, pointB);
+    edge = this.AddEdge(edge);
     if (edge.isHorizontal) {
       edge.start.rightEdge = edge;
       edge.end.leftEdge = edge;
@@ -51,7 +52,7 @@ export default class Table implements ContextObject, Renderable {
       edge.start.bottomEdge = edge;
       edge.end.topEdge = edge;
     }
-    this.addEdge(edge);
+    return edge;
   }
 
   CreateTable(
@@ -77,5 +78,9 @@ export default class Table implements ContextObject, Renderable {
     }
   }
 
-  Render(ctx: p5): void {}
+  Render(ctx: p5): void {
+    for (const node of this.nodes) {
+      node.Render(ctx);
+    }
+  }
 }

@@ -1,5 +1,6 @@
 import * as p5 from 'p5';
 import { Vector } from 'p5';
+import SelectionTool from '../Tools/SelectionTool';
 import OnKey from './Events/OnKey';
 import OnMouseButton from './Events/OnMouseButton';
 import OnMouseMove from './Events/OnMouseMove';
@@ -20,6 +21,11 @@ export default class Context {
     return Context.__id++;
   }
 
+  private __canvas?: p5.Renderer;
+  get canvas() {
+    return this.__canvas;
+  }
+
   private ctx: p5;
 
   renderer?: Renderer;
@@ -34,6 +40,8 @@ export default class Context {
   OnMouseWheelDispatchers: OnMouseWheel[] = [];
   OnKeyDispatchers: OnKey[] = [];
 
+  selectionTool: SelectionTool;
+
   constructor(width: number, height: number, element_id?: string) {
     Context.__context = this;
 
@@ -41,6 +49,7 @@ export default class Context {
     this.height = height;
     this.element_id = element_id;
     this.ctx = new p5(this.sketch.bind(this));
+    this.selectionTool = new SelectionTool();
   }
 
   private sketch(ctx: p5) {
@@ -59,12 +68,13 @@ export default class Context {
         ctx.mouseButton,
         'CLICKED'
       );
-    ctx.mousePressed = () =>
+    ctx.mousePressed = () => {
       this.OnMouseButton(
         new Vector(ctx.mouseX, ctx.mouseY),
         ctx.mouseButton,
         'PRESSED'
       );
+    };
     ctx.mouseReleased = () =>
       this.OnMouseButton(
         new Vector(ctx.mouseX, ctx.mouseY),
@@ -77,8 +87,9 @@ export default class Context {
   }
 
   Setup() {
-    const canvas = this.ctx.createCanvas(this.width, this.height);
-    if (this.element_id) canvas.parent(this.element_id);
+    this.__canvas = this.ctx.createCanvas(this.width, this.height);
+    if (this.element_id) this.canvas?.parent(this.element_id);
+    this.renderer?.AddRenderObject(this.selectionTool);
   }
 
   BindOnMouseMove(obj: OnMouseMove) {
@@ -112,13 +123,19 @@ export default class Context {
     button: string,
     state: 'PRESSED' | 'RELEASED' | 'CLICKED'
   ) {
+    let check = true;
     for (const dispatcher of this.OnMouseButtonDispatchers)
-      if (!dispatcher.OnMouseButton(position, button, state)) break;
+      check = dispatcher.OnMouseButton(position, button, state) && check;
+
+    if (check) {
+      this.selectionTool.OnMouseButton(position, button, state);
+    }
   }
   OnMouseMove(position: Vector, button?: string) {
     for (const dispatcher of this.OnMouseMoveDispatchers) {
       dispatcher.OnMouseMove(position, button);
     }
+    this.selectionTool.OnMouseMove(position, button);
   }
   OnMouseWheel(scroll: Vector) {
     for (const dispatcher of this.OnMouseWheelDispatchers)

@@ -1,18 +1,8 @@
 import { Vector } from 'p5';
 
-export interface BBOXPoint {
-  x: number;
-  y: number;
-}
-
-export interface BBOX {
-  start: BBOXPoint;
-  end: BBOXPoint;
-}
-
 export interface Collidable {
   collider: Collider;
-  Bbox(): BBOX;
+  Bbox(): number[];
 }
 
 export default class Collider {
@@ -25,10 +15,10 @@ export default class Collider {
   PointCollision(point: Vector): boolean {
     const bbox = this.object.Bbox();
     return (
-      bbox.start.x <= point.x &&
-      bbox.start.y <= point.y &&
-      bbox.end.x >= point.x &&
-      bbox.end.y >= point.y
+      bbox[0] <= point.x &&
+      bbox[1] <= point.y &&
+      bbox[2] >= point.x &&
+      bbox[3] >= point.y
     );
   }
 }

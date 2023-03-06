@@ -1,6 +1,9 @@
+import * as p5 from 'p5';
 import { Vector } from 'p5';
+import Context, { ContextObject } from '../Base/Context';
+import { Renderable } from '../Base/Renderer';
 import Edge from './Edge';
-export default class Node {
+export default class Node implements Renderable {
   point: Vector;
   radius: number;
 
@@ -61,5 +64,11 @@ export default class Node {
 
   Equal(rhs: Node) {
     return this.x === rhs.x && this.y === rhs.y;
+  }
+
+  Render(ctx: p5): void {
+    ctx.stroke(0, 255, 0, 255);
+    ctx.strokeWeight(this.radius * 2);
+    ctx.point(this.point.x, this.point.y);
   }
 }

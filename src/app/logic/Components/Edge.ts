@@ -1,11 +1,13 @@
 import * as p5 from 'p5';
-import Collider, { BBOX, Collidable } from '../Base/Collider';
+import { Vector } from 'p5';
+import Collider, { Collidable } from '../Base/Collider';
 import Context, { ContextObject } from '../Base/Context';
 import OnKey from '../Base/Events/OnKey';
 import OnMouseButton from '../Base/Events/OnMouseButton';
 import OnMouseMove from '../Base/Events/OnMouseMove';
 import { Renderable } from '../Base/Renderer';
 import Node from './Node';
+import Table from './Table';
 
 export default class Edge
   implements
@@ -17,6 +19,7 @@ export default class Edge
     Collidable
 {
   collider: Collider;
+  table: Table;
 
   id: number;
 
@@ -29,6 +32,7 @@ export default class Edge
 
   isClickHold: boolean = false;
   selected: boolean = false;
+  isHover: boolean = false;
 
   isCTRLPressed = false;
 
@@ -67,12 +71,14 @@ export default class Edge
   }
 
   constructor(
+    table: Table,
     nodeA: Node,
     nodeB: Node,
     edgeWidth: number = 5,
     color = [0, 0, 0, 255],
-    highlightColor = [128, 128, 128, 255]
+    highlightColor = [128, 128, 128, 192]
   ) {
+    this.table = table;
     this.collider = new Collider(this);
 
     this.__isVertical = nodeA.x === nodeB.x;
@@ -114,17 +120,88 @@ export default class Edge
 
   OnContextInit(ctx: Context): void {}
 
-  Bbox(): BBOX {
+  Bbox(): number[] {
     if (this.isVertical) {
-      return {
-        start: { x: this.start.x - this.edgeWidth, y: this.start.y },
-        end: { x: this.end.x + this.edgeWidth, y: this.end.y },
-      };
+      return [
+        this.start.x - this.edgeWidth,
+        this.start.y,
+        this.end.x + this.edgeWidth,
+        this.end.y,
+      ];
     } else {
-      return {
-        start: { x: this.start.x, y: this.start.y - this.edgeWidth },
-        end: { x: this.end.x, y: this.end.y + this.edgeWidth },
-      };
+      return [
+        this.start.x,
+        this.start.y - this.edgeWidth,
+        this.end.x,
+        this.end.y + this.edgeWidth,
+      ];
+    }
+  }
+
+  SplitEdge(n: number) {
+    if (Number.isNaN(n) || n <= 0 || n >= 1) return;
+    const splitPoint = Vector.lerp(this.start.point, this.end.point, n);
+    console.log(splitPoint);
+    const splitNode = this.table.AddNode(new Node(splitPoint.x, splitPoint.y));
+    let newEdge = new Edge(this.table, splitNode, this.end);
+    this.end = splitNode;
+    newEdge = this.table.AddEdge(newEdge);
+    if (this.isVertical) {
+      splitNode.topEdge = this;
+      splitNode.bottomEdge = newEdge;
+      newEdge.end.topEdge = newEdge;
+    } else if (this.isHorizontal) {
+      splitNode.leftEdge = this;
+      splitNode.rightEdge = newEdge;
+      newEdge.end.leftEdge = newEdge;
+    }
+    setTimeout(() => Context.context?.AddObject(newEdge));
+    return splitNode;
+  }
+
+  RecursiveSplit(n: number) {
+    const newNode = this.SplitEdge(n);
+    let currentEdge: Edge | undefined = this;
+    if (this.isHorizontal) {
+      let lastNode: Node | undefined = newNode;
+      while ((currentEdge = currentEdge?.start.topEdge)) {
+        const node = currentEdge.start.rightEdge?.SplitEdge(n);
+        if (node && lastNode) {
+          const edge = this.table.AddLink(node, lastNode);
+          setTimeout(() => Context.context?.AddObject(edge));
+          lastNode = node;
+        }
+      }
+      lastNode = newNode;
+      currentEdge = this.start.bottomEdge;
+      do {
+        const node = currentEdge?.end.rightEdge?.SplitEdge(n);
+        if (node && lastNode) {
+          const edge = this.table.AddLink(node, lastNode);
+          setTimeout(() => Context.context?.AddObject(edge));
+          lastNode = node;
+        }
+      } while ((currentEdge = currentEdge?.end.bottomEdge));
+    } else if (this.isVertical) {
+      let lastNode: Node | undefined = newNode;
+      while ((currentEdge = currentEdge?.start.leftEdge)) {
+        const node = currentEdge.start.bottomEdge?.SplitEdge(n);
+        if (node && lastNode) {
+          const edge = this.table.AddLink(node, lastNode);
+          setTimeout(() => Context.context?.AddObject(edge));
+          lastNode = node;
+        }
+      }
+      lastNode = newNode;
+      currentEdge = this.start.rightEdge;
+      do {
+        const node = currentEdge?.end.bottomEdge?.SplitEdge(n);
+        if (node && lastNode) {
+          const edge = this.table.AddLink(node, lastNode);
+          setTimeout(() => Context.context?.AddObject(edge));
+          lastNode = node;
+        }
+      } while ((currentEdge = currentEdge?.end.rightEdge));
     }
   }
 
@@ -133,14 +210,31 @@ export default class Edge
     button: string,
     state: 'PRESSED' | 'RELEASED' | 'CLICKED'
   ): boolean {
+    if (button === 'center' && state === 'RELEASED') {
+      if (this.collider.PointCollision(position)) {
+        if (this.isVertical) {
+          this.RecursiveSplit((position.y - this.y1) / (this.y2 - this.y1));
+        } else if (this.isHorizontal) {
+          this.RecursiveSplit((position.x - this.x1) / (this.x2 - this.x1));
+        }
+      }
+    }
     if (button === 'left' && state === 'PRESSED') {
       if (this.collider.PointCollision(position)) {
+        if (this.isVertical)
+          Context.context?.canvas?.style('cursor', 'e-resize');
+        else if (this.isHorizontal)
+          Context.context?.canvas?.style('cursor', 'n-resize');
         this.selected = true;
         this.isClickHold = true;
-      } else if (!this.isCTRLPressed) this.selected = false;
+        return false;
+      } else if (!this.isCTRLPressed) {
+        this.selected = false;
+      }
     }
     if (state === 'RELEASED') {
       this.isClickHold = false;
+      Context.context?.canvas?.style('cursor', 'default');
     }
     return true;
   }
@@ -159,7 +253,7 @@ export default class Edge
           if (position.x < otherEnd.x + otherEnd.radius)
             movement = otherEnd.x + otherEnd.radius;
         }
-        if (movement != 0) {
+        if (movement != 0 && this.x1 != movement) {
           this.x1 = this.x2 = movement;
           this.recursiveMove(this);
         }
@@ -174,7 +268,7 @@ export default class Edge
           if (position.y > otherEnd.y - otherEnd.radius)
             movement = otherEnd.y - otherEnd.radius;
         }
-        if (movement != 0) {
+        if (movement != 0 && this.y1 != movement) {
           this.y1 = this.y2 = movement;
           this.recursiveMove(this);
         }
@@ -201,8 +295,12 @@ export default class Edge
       );
     else ctx.stroke(this.color[0], this.color[1], this.color[2], this.color[3]);
     ctx.strokeWeight(this.edgeWidth);
-    ctx.strokeCap('square');
-
     ctx.line(this.start.x, this.start.y, this.end.x, this.end.y);
+    ctx.strokeWeight(1);
+    ctx.text(
+      this.id.toString(),
+      (this.end.x + this.start.x) / 2,
+      (this.end.y + this.start.y) / 2
+    );
   }
 }
