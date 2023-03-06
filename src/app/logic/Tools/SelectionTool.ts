@@ -3,7 +3,7 @@ import { Vector } from 'p5';
 import Context, { ContextObject } from '../Base/Context';
 import OnMouseButton from '../Base/Events/OnMouseButton';
 import OnMouseMove from '../Base/Events/OnMouseMove';
-import { Renderable } from '../Base/Renderer';
+import Renderer, { Renderable } from '../Base/Renderer';
 
 export interface Selectable {}
 
@@ -21,16 +21,19 @@ export default class SelectionTool
   ): boolean {
     if (button === 'left' && state === 'PRESSED') {
       this.dragStart = position;
+      Renderer.Render();
     } else if (state === 'RELEASED') {
       //TODO: Find all objects selected by tool
       this.dragStart = undefined;
       this.dragEnd = undefined;
+      Renderer.Render();
     }
     return true;
   }
   OnMouseMove(position: p5.Vector, button?: string | undefined): void {
     if (this.dragStart) {
       this.dragEnd = position;
+      Renderer.Render();
     }
   }
   Render(ctx: p5): void {

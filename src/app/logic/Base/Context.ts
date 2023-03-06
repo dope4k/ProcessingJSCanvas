@@ -5,6 +5,7 @@ import OnKey from './Events/OnKey';
 import OnMouseButton from './Events/OnMouseButton';
 import OnMouseMove from './Events/OnMouseMove';
 import OnMouseWheel from './Events/OnMouseWheel';
+import OnTouch, { Touch } from './Events/OnTouch';
 import Renderer, { Renderable } from './Renderer';
 
 export interface ContextObject {
@@ -38,6 +39,7 @@ export default class Context {
   OnMouseMoveDispatchers: OnMouseMove[] = [];
   OnMouseButtonDispatchers: OnMouseButton[] = [];
   OnMouseWheelDispatchers: OnMouseWheel[] = [];
+  OnTouchDispatchers: OnTouch[] = [];
   OnKeyDispatchers: OnKey[] = [];
 
   selectionTool: SelectionTool;
@@ -81,8 +83,11 @@ export default class Context {
         ctx.mouseButton,
         'RELEASED'
       );
-    ctx.mouseWheel = () =>
-      this.OnMouseWheel(new Vector(ctx.mouseX, ctx.mouseY));
+    ctx.mouseWheel = (evt: { delta: number }) =>
+      this.OnMouseWheel(new Vector(ctx.mouseX, ctx.mouseY), evt.delta);
+    ctx.touchStarted = () => this.OnTouch(ctx.touches as Touch[], 'STARTED');
+    ctx.touchMoved = () => this.OnTouch(ctx.touches as Touch[], 'MOVED');
+    ctx.touchEnded = () => this.OnTouch(ctx.touches as Touch[], 'ENDED');
     ctx.draw = () => this.Render();
   }
 
@@ -101,6 +106,9 @@ export default class Context {
   BindOnMouseButton(obj: OnMouseButton) {
     this.OnMouseButtonDispatchers.push(obj);
   }
+  BindOnTouch(obj: OnTouch) {
+    this.OnTouchDispatchers.push(obj);
+  }
   BindOnKey(obj: OnKey) {
     this.OnKeyDispatchers.push(obj);
   }
@@ -109,6 +117,7 @@ export default class Context {
     if ('OnMouseMove' in obj) this.BindOnMouseMove(obj as OnMouseMove);
     if ('OnMouseWheel' in obj) this.BindOnMouseWheel(obj as OnMouseWheel);
     if ('OnMouseButton' in obj) this.BindOnMouseButton(obj as OnMouseButton);
+    if ('OnTouch' in obj) this.BindOnTouch(obj as OnTouch);
     if ('OnKey' in obj) this.BindOnKey(obj as OnKey);
     if ('Render' in obj) this.renderer?.AddRenderObject(obj as Renderable);
     obj.OnContextInit(this);
@@ -124,26 +133,52 @@ export default class Context {
     state: 'PRESSED' | 'RELEASED' | 'CLICKED'
   ) {
     let check = true;
-    for (const dispatcher of this.OnMouseButtonDispatchers)
-      check = dispatcher.OnMouseButton(position, button, state) && check;
+    const length = this.OnMouseButtonDispatchers.length;
+    for (let i = 0; i < length; ++i) {
+      const ret = this.OnMouseButtonDispatchers[i].OnMouseButton(
+        position,
+        button,
+        state
+      );
+      if (ret !== null) {
+        check = false;
+        if (ret === false) break;
+      }
+    }
 
     if (check) {
       this.selectionTool.OnMouseButton(position, button, state);
     }
   }
   OnMouseMove(position: Vector, button?: string) {
-    for (const dispatcher of this.OnMouseMoveDispatchers) {
-      dispatcher.OnMouseMove(position, button);
+    const length = this.OnMouseMoveDispatchers.length;
+    for (let i = 0; i < length; ++i) {
+      this.OnMouseMoveDispatchers[i].OnMouseMove(position, button);
     }
     this.selectionTool.OnMouseMove(position, button);
   }
-  OnMouseWheel(scroll: Vector) {
-    for (const dispatcher of this.OnMouseWheelDispatchers)
-      dispatcher.OnMouseWheel(scroll);
+  OnMouseWheel(position: Vector, scroll: number) {
+    const length = this.OnMouseWheelDispatchers.length;
+    for (let i = 0; i < length; ++i) {
+      this.OnMouseWheelDispatchers[i].OnMouseWheel(position, scroll);
+    }
+  }
+  OnTouch(touches: Touch[], state: 'STARTED' | 'MOVED' | 'ENDED') {
+    let check = true;
+    const length = this.OnTouchDispatchers.length;
+    for (let i = 0; i < length; ++i) {
+      const ret = this.OnTouchDispatchers[i].OnTouch(touches, state);
+      if (ret !== null) {
+        check = false;
+        if (ret === false) break;
+      }
+    }
   }
   OnKey(button: string, state: 'PRESSED' | 'RELEASED' | 'TYPED') {
-    for (const dispatcher of this.OnKeyDispatchers)
-      dispatcher.OnKey(button, state);
+    const length = this.OnKeyDispatchers.length;
+    for (let i = 0; i < length; ++i) {
+      this.OnKeyDispatchers[i].OnKey(button, state);
+    }
   }
 
   Render() {

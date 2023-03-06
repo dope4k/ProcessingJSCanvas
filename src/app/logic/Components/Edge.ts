@@ -5,7 +5,7 @@ import Context, { ContextObject } from '../Base/Context';
 import OnKey from '../Base/Events/OnKey';
 import OnMouseButton from '../Base/Events/OnMouseButton';
 import OnMouseMove from '../Base/Events/OnMouseMove';
-import { Renderable } from '../Base/Renderer';
+import Renderer, { Renderable } from '../Base/Renderer';
 import Node from './Node';
 import Table from './Table';
 
@@ -70,13 +70,17 @@ export default class Edge
     this.end.y = val;
   }
 
+  get length() {
+    return Vector.dist(this.start.point, this.end.point);
+  }
+
   constructor(
     table: Table,
     nodeA: Node,
     nodeB: Node,
     edgeWidth: number = 5,
     color = [0, 0, 0, 255],
-    highlightColor = [128, 128, 128, 192]
+    highlightColor = [128, 128, 128, 255]
   ) {
     this.table = table;
     this.collider = new Collider(this);
@@ -101,24 +105,9 @@ export default class Edge
     this.edgeWidth = edgeWidth;
   }
 
-  private recursiveMove(edge: Edge) {
-    let currentEdge: Edge | undefined = edge;
-    if (edge.isVertical) {
-      while ((currentEdge = currentEdge.start.topEdge))
-        currentEdge.x1 = currentEdge.x2 = edge.x1;
-      currentEdge = edge;
-      while ((currentEdge = currentEdge.end.bottomEdge))
-        currentEdge.x1 = currentEdge.x2 = edge.x1;
-    } else if (edge.isHorizontal) {
-      while ((currentEdge = currentEdge.start.leftEdge))
-        currentEdge.y1 = currentEdge.y2 = edge.y1;
-      currentEdge = edge;
-      while ((currentEdge = currentEdge.end.rightEdge))
-        currentEdge.y1 = currentEdge.y2 = edge.y1;
-    }
+  OnContextInit(ctx: Context): void {
+    Renderer.Render();
   }
-
-  OnContextInit(ctx: Context): void {}
 
   Bbox(): number[] {
     if (this.isVertical) {
@@ -155,7 +144,7 @@ export default class Edge
       splitNode.rightEdge = newEdge;
       newEdge.end.leftEdge = newEdge;
     }
-    setTimeout(() => Context.context?.AddObject(newEdge));
+    Context.context?.AddObject(newEdge);
     return splitNode;
   }
 
@@ -168,7 +157,7 @@ export default class Edge
         const node = currentEdge.start.rightEdge?.SplitEdge(n);
         if (node && lastNode) {
           const edge = this.table.AddLink(node, lastNode);
-          setTimeout(() => Context.context?.AddObject(edge));
+          Context.context?.AddObject(edge);
           lastNode = node;
         }
       }
@@ -178,7 +167,7 @@ export default class Edge
         const node = currentEdge?.end.rightEdge?.SplitEdge(n);
         if (node && lastNode) {
           const edge = this.table.AddLink(node, lastNode);
-          setTimeout(() => Context.context?.AddObject(edge));
+          Context.context?.AddObject(edge);
           lastNode = node;
         }
       } while ((currentEdge = currentEdge?.end.bottomEdge));
@@ -188,7 +177,7 @@ export default class Edge
         const node = currentEdge.start.bottomEdge?.SplitEdge(n);
         if (node && lastNode) {
           const edge = this.table.AddLink(node, lastNode);
-          setTimeout(() => Context.context?.AddObject(edge));
+          Context.context?.AddObject(edge);
           lastNode = node;
         }
       }
@@ -198,7 +187,7 @@ export default class Edge
         const node = currentEdge?.end.bottomEdge?.SplitEdge(n);
         if (node && lastNode) {
           const edge = this.table.AddLink(node, lastNode);
-          setTimeout(() => Context.context?.AddObject(edge));
+          Context.context?.AddObject(edge);
           lastNode = node;
         }
       } while ((currentEdge = currentEdge?.end.rightEdge));
@@ -209,7 +198,7 @@ export default class Edge
     position: p5.Vector,
     button: string,
     state: 'PRESSED' | 'RELEASED' | 'CLICKED'
-  ): boolean {
+  ): boolean | null {
     if (button === 'center' && state === 'RELEASED') {
       if (this.collider.PointCollision(position)) {
         if (this.isVertical) {
@@ -217,9 +206,10 @@ export default class Edge
         } else if (this.isHorizontal) {
           this.RecursiveSplit((position.x - this.x1) / (this.x2 - this.x1));
         }
+        Renderer.Render();
+        return true;
       }
-    }
-    if (button === 'left' && state === 'PRESSED') {
+    } else if (button === 'left' && state === 'PRESSED') {
       if (this.collider.PointCollision(position)) {
         if (this.isVertical)
           Context.context?.canvas?.style('cursor', 'e-resize');
@@ -227,16 +217,19 @@ export default class Edge
           Context.context?.canvas?.style('cursor', 'n-resize');
         this.selected = true;
         this.isClickHold = true;
-        return false;
+        Renderer.Render();
+        return true;
       } else if (!this.isCTRLPressed) {
         this.selected = false;
+        Renderer.Render();
+        return true;
       }
-    }
-    if (state === 'RELEASED') {
+    } else if (state === 'RELEASED') {
       this.isClickHold = false;
       Context.context?.canvas?.style('cursor', 'default');
+      Renderer.Render();
     }
-    return true;
+    return null;
   }
 
   OnMouseMove(position: p5.Vector, button?: string | undefined): void {
@@ -254,8 +247,8 @@ export default class Edge
             movement = otherEnd.x + otherEnd.radius;
         }
         if (movement != 0 && this.x1 != movement) {
-          this.x1 = this.x2 = movement;
-          this.recursiveMove(this);
+          this.start.MoveX(movement);
+          Renderer.Render();
         }
       } else if (this.isHorizontal) {
         movement = position.y;
@@ -269,8 +262,8 @@ export default class Edge
             movement = otherEnd.y - otherEnd.radius;
         }
         if (movement != 0 && this.y1 != movement) {
-          this.y1 = this.y2 = movement;
-          this.recursiveMove(this);
+          this.start.MoveY(movement);
+          Renderer.Render();
         }
       }
     }
@@ -296,11 +289,14 @@ export default class Edge
     else ctx.stroke(this.color[0], this.color[1], this.color[2], this.color[3]);
     ctx.strokeWeight(this.edgeWidth);
     ctx.line(this.start.x, this.start.y, this.end.x, this.end.y);
-    ctx.strokeWeight(1);
-    ctx.text(
-      this.id.toString(),
-      (this.end.x + this.start.x) / 2,
-      (this.end.y + this.start.y) / 2
-    );
+
+    if (false) {
+      ctx.strokeWeight(1);
+      ctx.text(
+        this.id.toString(),
+        (this.end.x + this.start.x) / 2,
+        (this.end.y + this.start.y) / 2
+      );
+    }
   }
 }

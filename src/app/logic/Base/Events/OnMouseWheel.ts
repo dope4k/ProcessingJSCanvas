@@ -1,5 +1,4 @@
 import { Vector } from 'p5';
-
 export default interface OnMouseWheel {
-  OnMouseWheel(scroll: Vector): void;
+  OnMouseWheel(position: Vector, scroll: number): void;
 }
