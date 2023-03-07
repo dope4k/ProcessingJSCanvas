@@ -18,6 +18,8 @@ export default class Edge
     OnMouseButton,
     Collidable
 {
+  zIndex: number = 0;
+
   collider: Collider;
   table: Table;
 
@@ -32,6 +34,8 @@ export default class Edge
 
   isClickHold: boolean = false;
   selected: boolean = false;
+
+  disabled: boolean = false;
   isHover: boolean = false;
 
   isCTRLPressed = false;
@@ -78,7 +82,7 @@ export default class Edge
     table: Table,
     nodeA: Node,
     nodeB: Node,
-    edgeWidth: number = 5,
+    edgeWidth: number = 3,
     color = [0, 0, 0, 255],
     highlightColor = [128, 128, 128, 255]
   ) {
@@ -127,12 +131,32 @@ export default class Edge
     }
   }
 
+  IsValidStart(point: Vector) {
+    if (this.isHorizontal) {
+      return point.x < this.end.point.x - this.end.radius;
+    } else if (this.isVertical) {
+      return point.y < this.end.point.y - this.end.radius;
+    }
+    return false;
+  }
+
+  IsValidEnd(point: Vector) {
+    if (this.isHorizontal) {
+      return point.x > this.start.point.x + this.start.radius;
+    } else if (this.isVertical) {
+      return point.y > this.start.point.y + this.start.radius;
+    }
+    return false;
+  }
+
   SplitEdge(n: number) {
     if (Number.isNaN(n) || n <= 0 || n >= 1) return;
     const splitPoint = Vector.lerp(this.start.point, this.end.point, n);
-    console.log(splitPoint);
-    const splitNode = this.table.AddNode(new Node(splitPoint.x, splitPoint.y));
+    const splitNode = this.table.AddNode(
+      new Node(this.table, splitPoint.x, splitPoint.y)
+    );
     let newEdge = new Edge(this.table, splitNode, this.end);
+    newEdge.disabled = this.disabled;
     this.end = splitNode;
     newEdge = this.table.AddEdge(newEdge);
     if (this.isVertical) {
@@ -194,6 +218,34 @@ export default class Edge
     }
   }
 
+  Select() {
+    this.selected = true;
+  }
+
+  BoundaryEdge() {
+    return (
+      (this.isHorizontal && (!this.start.topEdge || !this.end.bottomEdge)) ||
+      (this.isVertical && (!this.start.leftEdge || !this.end.rightEdge))
+    );
+  }
+
+  Disable(disable: boolean = true) {
+    if (this.disabled == disable || this.BoundaryEdge()) return;
+    this.disabled = disable;
+    if (this.start.ComplexNode()) {
+      this.start.rightEdge?.Disable(disable);
+      this.start.leftEdge?.Disable(disable);
+      this.start.topEdge?.Disable(disable);
+      this.start.bottomEdge?.Disable(disable);
+    }
+    if (this.end.ComplexNode()) {
+      this.end.rightEdge?.Disable(disable);
+      this.end.leftEdge?.Disable(disable);
+      this.end.topEdge?.Disable(disable);
+      this.end.bottomEdge?.Disable(disable);
+    }
+  }
+
   OnMouseButton(
     position: p5.Vector,
     button: string,
@@ -201,10 +253,14 @@ export default class Edge
   ): boolean | null {
     if (button === 'center' && state === 'RELEASED') {
       if (this.collider.PointCollision(position)) {
-        if (this.isVertical) {
-          this.RecursiveSplit((position.y - this.y1) / (this.y2 - this.y1));
-        } else if (this.isHorizontal) {
-          this.RecursiveSplit((position.x - this.x1) / (this.x2 - this.x1));
+        if (this.disabled) {
+          this.Disable(false);
+        } else {
+          if (this.isVertical) {
+            this.RecursiveSplit((position.y - this.y1) / (this.y2 - this.y1));
+          } else if (this.isHorizontal) {
+            this.RecursiveSplit((position.x - this.x1) / (this.x2 - this.x1));
+          }
         }
         Renderer.Render();
         return true;
@@ -215,7 +271,8 @@ export default class Edge
           Context.context?.canvas?.style('cursor', 'e-resize');
         else if (this.isHorizontal)
           Context.context?.canvas?.style('cursor', 'n-resize');
-        this.selected = true;
+        this.Select();
+        this.table.Focus();
         this.isClickHold = true;
         Renderer.Render();
         return true;
@@ -270,15 +327,34 @@ export default class Edge
   }
 
   OnKey(button: string, state: 'PRESSED' | 'RELEASED' | 'TYPED'): void {
+    if (this.disabled) return;
     if (button === 'Control' && state === 'PRESSED') this.isCTRLPressed = true;
-    else if (state === 'RELEASED') this.isCTRLPressed = false;
+    if (button === 'Delete' && state === 'PRESSED' && this.selected) {
+      this.Disable();
+      if (this.start.IsDissolvable()) this.start.Dissolve();
+      Renderer.Render();
+    } else if (state === 'RELEASED') this.isCTRLPressed = false;
   }
 
   Equal(rhs: Edge) {
-    return this.start.Equal(rhs.start) && this.end.Equal(rhs.end);
+    return (
+      this.id === rhs.id ||
+      (this.start.Equal(rhs.start) && this.end.Equal(rhs.end))
+    );
   }
 
   Render(ctx: p5): void {
+    if (this.disabled) {
+      if (this.start.InFocusNode() || this.end.InFocusNode()) {
+        if (this.isClickHold || this.selected) ctx.stroke(64, 64, 64, 255);
+        else ctx.stroke(128, 128, 128, 255);
+        ctx.strokeWeight(1);
+        ctx.drawingContext.setLineDash([5, 5]);
+        ctx.line(this.start.x, this.start.y, this.end.x, this.end.y);
+        ctx.drawingContext.setLineDash([0, 0]);
+      }
+      return;
+    }
     if (this.isClickHold || this.selected)
       ctx.stroke(
         this.highlightColor[0],

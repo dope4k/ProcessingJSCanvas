@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import Image from 'src/app/logic/Components/Image';
 import Context from '../../logic/Base/Context';
 import Table from '../../logic/Components/Table';
 
@@ -6,15 +7,30 @@ import Table from '../../logic/Components/Table';
   selector: 'app-processing-canvas',
   templateUrl: './processing-canvas.component.html',
 })
-export class ProcessingCanvasComponent implements OnInit {
+export class ProcessingCanvasComponent {
   context?: Context;
 
-  ngOnInit(): void {
-    this.context = new Context(1280, 720, 'canvas');
-    this.context.InitRenderer();
+  fileAdded(evt: Event) {
+    const files: FileList = (evt.target as any).files;
 
-    const table = new Table();
-    table.CreateTable(150, 150, 3, 3, 100);
-    this.context.AddObject(table);
+    const img = document.createElement('img');
+    const src = URL.createObjectURL(files[0]);
+    img.src = src;
+
+    img.onload = () => {
+      const width = img.width <= 1280 ? img.width : 1280;
+      const height = img.height <= 720 ? img.height : 720;
+
+      this.context = new Context(width, height, 'canvas');
+      this.context.InitRenderer();
+
+      const table = new Table();
+      table.CreateTable(50, 50, 5, 5, 50);
+      this.context.AddObject(table);
+
+      const image = new Image(src, img.width, img.height);
+      this.context?.AddObject(image);
+      img.remove();
+    };
   }
 }

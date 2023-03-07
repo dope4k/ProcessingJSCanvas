@@ -1,10 +1,14 @@
 import * as p5 from 'p5';
 import { Vector } from 'p5';
 import Collider, { Collidable } from '../Base/Collider';
+import Context, { ContextObject } from '../Base/Context';
 import { Renderable } from '../Base/Renderer';
 import Edge from './Edge';
+import Table from './Table';
 
 export default class Node implements Renderable, Collidable {
+  zIndex: number = 0;
+
   point: Vector;
   radius: number;
 
@@ -14,6 +18,8 @@ export default class Node implements Renderable, Collidable {
   leftEdge?: Edge = undefined;
 
   collider: Collider;
+
+  table: Table;
 
   get x() {
     return this.point.x;
@@ -28,8 +34,9 @@ export default class Node implements Renderable, Collidable {
     this.point.y = val;
   }
 
-  constructor(x: number, y: number, radius: number = 7) {
+  constructor(table: Table, x: number, y: number, radius: number = 5) {
     this.point = new Vector(x, y);
+    this.table = table;
     this.radius = radius;
     this.collider = new Collider(this);
   }
@@ -112,6 +119,129 @@ export default class Node implements Renderable, Collidable {
       currentEdge = currentEdge?.end.rightEdge
     ) {
       currentEdge.y1 = currentEdge.y2 = y;
+    }
+  }
+
+  InFocusNode() {
+    return (
+      this.topEdge?.selected ||
+      this.bottomEdge?.selected ||
+      this.rightEdge?.selected ||
+      this.leftEdge?.selected
+    );
+  }
+
+  ComplexNode() {
+    if (this.topEdge?.disabled && this.leftEdge?.disabled) return true;
+    else if (this.topEdge?.disabled && this.rightEdge?.disabled) return true;
+    else if (this.bottomEdge?.disabled && this.leftEdge?.disabled) return true;
+    else if (this.bottomEdge?.disabled && this.rightEdge?.disabled) return true;
+    return false;
+  }
+
+  BoundaryNode() {
+    let count = 0;
+    if (!this.topEdge) ++count;
+    if (!this.bottomEdge) ++count;
+    if (!this.leftEdge) ++count;
+    if (!this.rightEdge) ++count;
+    return count >= 2;
+  }
+
+  IsDissolvable() {
+    let check = true;
+    if (this.topEdge?.disabled && this.bottomEdge?.disabled) {
+      for (
+        let edge: Node | undefined = this.topEdge?.start;
+        edge !== undefined && check;
+        edge = edge.topEdge?.start
+      ) {
+        check = !(
+          edge.topEdge?.disabled === false ||
+          edge.bottomEdge?.disabled === false
+        );
+      }
+      for (
+        let edge: Node | undefined = this.bottomEdge?.end;
+        edge !== undefined && check;
+        edge = edge.bottomEdge?.end
+      ) {
+        check = !(
+          edge.topEdge?.disabled === false ||
+          edge.bottomEdge?.disabled === false
+        );
+      }
+    } else if (this.rightEdge?.disabled && this.leftEdge?.disabled) {
+      for (
+        let edge: Node | undefined = this.leftEdge?.start;
+        edge !== undefined && check;
+        edge = edge.leftEdge?.start
+      ) {
+        check = !(
+          edge.rightEdge?.disabled === false ||
+          edge.leftEdge?.disabled === false
+        );
+      }
+      for (
+        let edge: Node | undefined = this.rightEdge?.end;
+        edge !== undefined && check;
+        edge = edge.rightEdge?.end
+      ) {
+        check = !(
+          edge.rightEdge?.disabled === false ||
+          edge.leftEdge?.disabled === false
+        );
+      }
+    } else return false;
+    return check;
+  }
+
+  Dissolve() {
+    if (
+      (this.topEdge === undefined || this.topEdge?.disabled) &&
+      (this.bottomEdge === undefined || this.bottomEdge?.disabled)
+    ) {
+      if (this.leftEdge && this.rightEdge) {
+        this.leftEdge.end = this.rightEdge.end;
+        this.rightEdge.end.leftEdge = this.leftEdge;
+        Context.context?.RemoveObject(this.rightEdge.id);
+        this.table.RemoveEdge(this.rightEdge);
+        if (this.topEdge) {
+          Context.context?.RemoveObject(this.topEdge.id);
+          this.table.RemoveEdge(this.topEdge);
+        }
+        if (this.bottomEdge) {
+          Context.context?.RemoveObject(this.bottomEdge.id);
+          this.table.RemoveEdge(this.bottomEdge);
+        }
+
+        this.leftEdge = this.rightEdge = undefined;
+        this.topEdge?.start.Dissolve();
+        this.bottomEdge?.end.Dissolve();
+        this.table.RemoveNode(this);
+      }
+    } else if (
+      (this.rightEdge === undefined || this.rightEdge?.disabled) &&
+      (this.leftEdge === undefined || this.leftEdge?.disabled)
+    ) {
+      if (this.topEdge && this.bottomEdge) {
+        this.topEdge.end = this.bottomEdge.end;
+        this.bottomEdge.end.topEdge = this.topEdge;
+        Context.context?.RemoveObject(this.bottomEdge.id);
+        this.table.RemoveEdge(this.bottomEdge);
+        if (this.rightEdge) {
+          Context.context?.RemoveObject(this.rightEdge.id);
+          this.table.RemoveEdge(this.rightEdge);
+        }
+        if (this.leftEdge) {
+          Context.context?.RemoveObject(this.leftEdge.id);
+          this.table.RemoveEdge(this.leftEdge);
+        }
+        this.topEdge = this.bottomEdge = undefined;
+        this.leftEdge?.start.Dissolve();
+        this.rightEdge?.end.Dissolve();
+        this.table.RemoveNode(this);
+      }
     }
   }
 

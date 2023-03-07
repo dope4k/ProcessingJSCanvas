@@ -9,6 +9,7 @@ import OnTouch, { Touch } from './Events/OnTouch';
 import Renderer, { Renderable } from './Renderer';
 
 export interface ContextObject {
+  id: number;
   OnContextInit(ctx: Context): void;
 }
 
@@ -28,8 +29,11 @@ export default class Context {
   }
 
   private ctx: p5;
+  get renderer() {
+    return this.ctx;
+  }
 
-  renderer?: Renderer;
+  private __renderer?: Renderer;
 
   width: number;
   height: number;
@@ -52,11 +56,10 @@ export default class Context {
     this.element_id = element_id;
     this.ctx = new p5(this.sketch.bind(this));
     this.selectionTool = new SelectionTool();
+    this.Setup();
   }
 
   private sketch(ctx: p5) {
-    ctx.setup = () => this.Setup();
-
     ctx.keyPressed = () => this.OnKey(ctx.key, 'PRESSED');
     ctx.keyReleased = () => this.OnKey(ctx.key, 'RELEASED');
     ctx.keyTyped = () => this.OnKey(ctx.key, 'TYPED');
@@ -94,7 +97,7 @@ export default class Context {
   Setup() {
     this.__canvas = this.ctx.createCanvas(this.width, this.height);
     if (this.element_id) this.canvas?.parent(this.element_id);
-    this.renderer?.AddRenderObject(this.selectionTool);
+    this.__renderer?.AddRenderObject(this.selectionTool);
   }
 
   BindOnMouseMove(obj: OnMouseMove) {
@@ -119,12 +122,33 @@ export default class Context {
     if ('OnMouseButton' in obj) this.BindOnMouseButton(obj as OnMouseButton);
     if ('OnTouch' in obj) this.BindOnTouch(obj as OnTouch);
     if ('OnKey' in obj) this.BindOnKey(obj as OnKey);
-    if ('Render' in obj) this.renderer?.AddRenderObject(obj as Renderable);
+    if ('Render' in obj)
+      this.__renderer?.AddRenderObject(obj as any as Renderable);
     obj.OnContextInit(this);
+  }
+  RemoveObject(id?: number) {
+    if (!id) return;
+    this.OnMouseMoveDispatchers = this.OnMouseMoveDispatchers.filter(
+      (o) => (o as any as ContextObject).id !== id
+    );
+    this.OnMouseWheelDispatchers = this.OnMouseWheelDispatchers.filter(
+      (o) => (o as any as ContextObject).id !== id
+    );
+    this.OnMouseButtonDispatchers = this.OnMouseButtonDispatchers.filter(
+      (o) => (o as any as ContextObject).id !== id
+    );
+    this.OnTouchDispatchers = this.OnTouchDispatchers.filter(
+      (o) => (o as any as ContextObject).id !== id
+    );
+    this.OnKeyDispatchers = this.OnKeyDispatchers.filter(
+      (o) => (o as any as ContextObject).id !== id
+    );
+    this.__renderer?.RemoveRenderObject(id);
+    Renderer.Render();
   }
 
   InitRenderer() {
-    this.renderer = new Renderer();
+    this.__renderer = new Renderer();
   }
 
   OnMouseButton(
@@ -134,7 +158,11 @@ export default class Context {
   ) {
     let check = true;
     const length = this.OnMouseButtonDispatchers.length;
-    for (let i = 0; i < length; ++i) {
+    for (
+      let i = 0;
+      i < length && i < this.OnMouseButtonDispatchers.length;
+      ++i
+    ) {
       const ret = this.OnMouseButtonDispatchers[i].OnMouseButton(
         position,
         button,
@@ -152,21 +180,25 @@ export default class Context {
   }
   OnMouseMove(position: Vector, button?: string) {
     const length = this.OnMouseMoveDispatchers.length;
-    for (let i = 0; i < length; ++i) {
+    for (let i = 0; i < length && i < this.OnMouseMoveDispatchers.length; ++i) {
       this.OnMouseMoveDispatchers[i].OnMouseMove(position, button);
     }
     this.selectionTool.OnMouseMove(position, button);
   }
   OnMouseWheel(position: Vector, scroll: number) {
     const length = this.OnMouseWheelDispatchers.length;
-    for (let i = 0; i < length; ++i) {
+    for (
+      let i = 0;
+      i < length && i < this.OnMouseWheelDispatchers.length;
+      ++i
+    ) {
       this.OnMouseWheelDispatchers[i].OnMouseWheel(position, scroll);
     }
   }
   OnTouch(touches: Touch[], state: 'STARTED' | 'MOVED' | 'ENDED') {
     let check = true;
     const length = this.OnTouchDispatchers.length;
-    for (let i = 0; i < length; ++i) {
+    for (let i = 0; i < length && i < this.OnTouchDispatchers.length; ++i) {
       const ret = this.OnTouchDispatchers[i].OnTouch(touches, state);
       if (ret !== null) {
         check = false;
@@ -176,12 +208,12 @@ export default class Context {
   }
   OnKey(button: string, state: 'PRESSED' | 'RELEASED' | 'TYPED') {
     const length = this.OnKeyDispatchers.length;
-    for (let i = 0; i < length; ++i) {
+    for (let i = 0; i < length && i < this.OnKeyDispatchers.length; ++i) {
       this.OnKeyDispatchers[i].OnKey(button, state);
     }
   }
 
   Render() {
-    this.renderer?.Render(this.ctx);
+    this.__renderer?.Render(this.ctx);
   }
 }

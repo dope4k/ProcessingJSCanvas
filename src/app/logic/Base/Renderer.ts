@@ -1,7 +1,9 @@
 import * as p5 from 'p5';
+import { ContextObject } from './Context';
 
-export abstract class Renderable {
-  abstract Render(ctx: p5): void | Promise<void>;
+export interface Renderable {
+  zIndex: number;
+  Render(ctx: p5): void | Promise<void>;
 }
 
 export default class Renderer {
@@ -28,6 +30,13 @@ export default class Renderer {
 
   AddRenderObject(renderable: Renderable) {
     this.render_objects.push(renderable);
+    this.render_objects.sort((a, b) => a.zIndex - b.zIndex);
+  }
+
+  RemoveRenderObject(id: number) {
+    this.render_objects = (
+      this.render_objects as any as ContextObject[]
+    ).filter((o) => o.id !== id) as any as Renderable[];
   }
 
   Render(ctx: p5) {

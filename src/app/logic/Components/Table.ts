@@ -1,5 +1,6 @@
 import * as p5 from 'p5';
 import { Vector } from 'p5';
+import Collider, { Collidable } from '../Base/Collider';
 import Context, { ContextObject } from '../Base/Context';
 import OnMouseButton from '../Base/Events/OnMouseButton';
 import OnMouseMove from '../Base/Events/OnMouseMove';
@@ -16,20 +17,30 @@ export default class Table
     OnMouseMove,
     OnMouseWheel,
     OnTouch,
+    Collidable,
     Renderable
 {
+  zIndex: number = 0;
+
+  id: number;
+
   edges: Edge[];
   nodes: Node[];
 
   extents?: Node[];
+  collider: Collider;
 
   dragExtentIndex?: number;
 
   initialTouches: Touch[] = [];
 
+  focus: boolean = false;
+
   constructor() {
     this.edges = [];
     this.nodes = [];
+    this.collider = new Collider(this);
+    this.id = Context.id;
   }
 
   OnContextInit(ctx: Context): void {
@@ -61,11 +72,29 @@ export default class Table
     return this.edges.find((e) => e.Equal(edge));
   }
 
+  Bbox(): number[] {
+    this.CalculateExtents();
+    return [
+      this.extents![0].x - 10,
+      this.extents![0].y - 10,
+      this.extents![3].x + 10,
+      this.extents![3].y + 10,
+    ];
+  }
+
   AddNode(node: Node) {
     const graphNode = this.findNode(node);
     if (graphNode) return graphNode;
     else this.nodes.push(node);
     return node;
+  }
+
+  RemoveNode(node: Node) {
+    this.nodes = this.nodes.filter((n) => !n.Equal(node));
+  }
+
+  RemoveEdge(edge: Edge) {
+    this.edges = this.edges.filter((e) => !e.Equal(edge));
   }
 
   AddEdge(edge: Edge) {
@@ -99,18 +128,36 @@ export default class Table
   ) {
     for (let i = originX; i < nRows * cellSize + originX; i += cellSize) {
       for (let j = originY; j < nCols * cellSize + originY; j += cellSize) {
-        this.AddLink(new Node(i, j), new Node(i + cellSize, j));
+        this.AddLink(new Node(this, i, j), new Node(this, i + cellSize, j));
         this.AddLink(
-          new Node(i + cellSize, j),
-          new Node(i + cellSize, j + cellSize)
+          new Node(this, i + cellSize, j),
+          new Node(this, i + cellSize, j + cellSize)
         );
         this.AddLink(
-          new Node(i, j + cellSize),
-          new Node(i + cellSize, j + cellSize)
+          new Node(this, i, j + cellSize),
+          new Node(this, i + cellSize, j + cellSize)
         );
-        this.AddLink(new Node(i, j), new Node(i, j + cellSize));
+        this.AddLink(new Node(this, i, j), new Node(this, i, j + cellSize));
       }
     }
+  }
+
+  GetExtentOffset(i: number) {
+    let [offsetX, offsetY] = [0, 0];
+    if (i == 0) {
+      offsetX = -10;
+      offsetY = -10;
+    } else if (i == 1) {
+      offsetX = 10;
+      offsetY = -10;
+    } else if (i == 2) {
+      offsetX = -10;
+      offsetY = 10;
+    } else if (i == 3) {
+      offsetX = 10;
+      offsetY = 10;
+    }
+    return [offsetX, offsetY];
   }
 
   Scale(x: number, y: number, originX: number, originY: number) {
@@ -133,8 +180,13 @@ export default class Table
     }
   }
 
+  Focus(focus: boolean = true) {
+    this.focus = focus;
+  }
+
   OnMouseWheel(position: Vector, scroll: number): void {
-    this.Scale(-scroll * 0.1, -scroll * 0.1, position.x, position.y);
+    if (this.collider.PointCollision(position))
+      this.Scale(-scroll * 0.1, -scroll * 0.1, position.x, position.y);
   }
 
   OnMouseButton(
@@ -143,9 +195,19 @@ export default class Table
     state: 'PRESSED' | 'RELEASED' | 'CLICKED'
   ): boolean | null {
     if (button === 'left' && state === 'PRESSED' && this.extents) {
+      if (!this.collider.PointCollision(position)) this.focus = false;
       let i = 0;
       for (const extentPoint of this.extents) {
-        if (extentPoint.collider.PointCollision(position)) {
+        let [offsetX, offsetY] = this.GetExtentOffset(i);
+        if (
+          Collider.PointCollision(position, [
+            extentPoint.x - extentPoint.radius + offsetX,
+            extentPoint.y - extentPoint.radius + offsetY,
+            extentPoint.x + extentPoint.radius + offsetX,
+            extentPoint.y + extentPoint.radius + offsetY,
+          ])
+        ) {
+          this.focus = true;
           this.dragExtentIndex = i;
           return false;
         }
@@ -162,6 +224,9 @@ export default class Table
     if (this.extents && this.dragExtentIndex != undefined) {
       const point = this.extents[this.dragExtentIndex];
       const otherPoint = this.extents[3 - this.dragExtentIndex];
+      let [offsetX, offsetY] = this.GetExtentOffset(3 - this.dragExtentIndex);
+      position.x += offsetX;
+      position.y += offsetY;
       const [distX, distY] = [
         (position.x - point.x) / Math.abs(otherPoint.x - position.x),
         (position.y - point.y) / Math.abs(otherPoint.y - position.y),
@@ -171,83 +236,40 @@ export default class Table
       for (const node of this.nodes) {
         const movementX = distX * Math.abs(otherPoint.x - node.x);
         const movementY = distY * Math.abs(otherPoint.y - node.y);
-        // if (movementX < 0) {
-        //   if (node.leftEdge) {
-        //     movementsX.push(
-        //       node.leftEdge.length + movementX > node.radius
-        //         ? movementX
-        //         : node.leftEdge.length - node.radius
-        //     );
-        //   } else {
-        //     movementsX.push(movementX);
-        //   }
-        // } else if (movementX > 0) {
-        //   if (node.rightEdge) {
-        //     movementsX.push(
-        //       node.rightEdge.length - movementX > node.radius
-        //         ? movementX
-        //         : node.rightEdge.length - node.radius
-        //     );
-        //   } else {
-        //     movementsX.push(movementX);
-        //   }
-        // } else movementsX.push(0);
-        // if (movementY < 0) {
-        //   if (node.topEdge) {
-        //     movementsY.push(
-        //       node.topEdge.length + movementY > node.radius
-        //         ? movementY
-        //         : node.topEdge.length - node.radius
-        //     );
-        //   } else {
-        //     movementsY.push(movementY);
-        //   }
-        // } else if (movementY > 0) {
-        //   if (node.bottomEdge) {
-        //     movementsY.push(
-        //       node.bottomEdge.length - movementY > node.radius
-        //         ? movementY
-        //         : node.bottomEdge.length - node.radius
-        //     );
-        //   } else {
-        //     movementsY.push(movementY);
-        //   }
-        // } else movementsY.push(0);
-
-        // if (movementX < 0 && !node.leftEdge) movementsX.push(movementX);
-        // else if (movementX > 0 && !node.rightEdge) movementsX.push(movementX);
-        // else if (movementX < 0 && node.leftEdge) movementsX.push(movementX);
-        // else if (
-        //   movementX < 0 &&
-        //   node.leftEdge &&
-        //   node.leftEdge.length <= node.radius
-        // ) {
-        //   movementsX.push(movementX);
-        // }
-        if (
-          (movementX < 0 && !node.leftEdge) ||
-          (movementX < 0 &&
-            node.leftEdge &&
-            node.leftEdge.length > node.radius) ||
-          (movementX > 0 && !node.rightEdge) ||
-          (movementX > 0 &&
-            node.rightEdge &&
-            node.rightEdge.length > node.radius)
-        )
-          movementsX.push(movementX);
-        else movementsX.push(0);
-        if (
-          (movementY < 0 && !node.topEdge) ||
-          (movementY < 0 &&
-            node.topEdge &&
-            node.topEdge.length > node.radius) ||
-          (movementY > 0 && !node.bottomEdge) ||
-          (movementY > 0 &&
-            node.bottomEdge &&
-            node.bottomEdge.length > node.radius)
-        )
-          movementsY.push(movementY);
-        else movementsY.push(0);
+        if (movementX < 0) {
+          if (node.leftEdge) {
+            movementsX.push(
+              node.leftEdge.length + movementX > node.radius ? movementX : 0
+            );
+          } else {
+            movementsX.push(movementX);
+          }
+        } else if (movementX > 0) {
+          if (node.rightEdge) {
+            movementsX.push(
+              node.rightEdge.length - movementX > node.radius ? movementX : 0
+            );
+          } else {
+            movementsX.push(movementX);
+          }
+        } else movementsX.push(0);
+        if (movementY < 0) {
+          if (node.topEdge) {
+            movementsY.push(
+              node.topEdge.length + movementY > node.radius ? movementY : 0
+            );
+          } else {
+            movementsY.push(movementY);
+          }
+        } else if (movementY > 0) {
+          if (node.bottomEdge) {
+            movementsY.push(
+              node.bottomEdge.length - movementY > node.radius ? movementY : 0
+            );
+          } else {
+            movementsY.push(movementY);
+          }
+        } else movementsY.push(0);
       }
       let i = 0;
       for (const node of this.nodes) {
@@ -294,7 +316,9 @@ export default class Table
     {
       //Draw Transform box for Table
       this.CalculateExtents();
-      if (this.extents) {
+
+      if (this.extents && this.focus) {
+        ctx.fill(0, 0, 0, 0);
         ctx.stroke(128, 128, 128, 256);
         ctx.strokeWeight(1);
         ctx.rect(
@@ -303,8 +327,11 @@ export default class Table
           this.extents[3].x - this.extents[0].x + 20,
           this.extents[3].y - this.extents[0].y + 20
         );
-        for (const extentPoint of this.extents) {
-          extentPoint.Render(ctx);
+        for (let i = 0; i < this.extents.length; ++i) {
+          let [offsetX, offsetY] = this.GetExtentOffset(i);
+          ctx.stroke(0, 255, 0, 255);
+          ctx.strokeWeight(this.extents[i].radius * 2);
+          ctx.point(this.extents[i].x + offsetX, this.extents[i].y + offsetY);
         }
       }
     }

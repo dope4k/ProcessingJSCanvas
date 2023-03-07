@@ -12,13 +12,17 @@ export default class Collider {
     this.object = obj;
   }
 
-  PointCollision(point: Vector): boolean {
-    const bbox = this.object.Bbox();
+  static PointCollision(point: Vector, bbox: number[]) {
     return (
       bbox[0] <= point.x &&
       bbox[1] <= point.y &&
       bbox[2] >= point.x &&
       bbox[3] >= point.y
     );
+  }
+
+  PointCollision(point: Vector): boolean {
+    const bbox = this.object.Bbox();
+    return Collider.PointCollision(point, bbox);
   }
 }

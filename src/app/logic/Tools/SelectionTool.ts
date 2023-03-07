@@ -10,8 +10,16 @@ export interface Selectable {}
 export default class SelectionTool
   implements ContextObject, Renderable, OnMouseButton, OnMouseMove
 {
+  zIndex: number = 10;
+
+  id: number;
+
   dragStart?: Vector;
   dragEnd?: Vector;
+
+  constructor() {
+    this.id = Context.id;
+  }
 
   OnContextInit(ctx: Context): void {}
   OnMouseButton(
