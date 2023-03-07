@@ -39,6 +39,9 @@ export default class Edge
   isHover: boolean = false;
 
   isCTRLPressed = false;
+  isShiftPressed = false;
+
+  dragDuplicateInitialPosition?: Vector;
 
   private __isVertical: boolean;
   private __isHorizontal: boolean;
@@ -222,6 +225,13 @@ export default class Edge
     this.selected = true;
   }
 
+  Equal(rhs: Edge) {
+    return (
+      this.id === rhs.id ||
+      (this.start.Equal(rhs.start) && this.end.Equal(rhs.end))
+    );
+  }
+
   BoundaryEdge() {
     return (
       (this.isHorizontal && (!this.start.topEdge || !this.end.bottomEdge)) ||
@@ -233,21 +243,131 @@ export default class Edge
     if (this.disabled == disable || this.BoundaryEdge()) return;
     this.disabled = disable;
     if (this.start.ComplexNode()) {
-      this.start.rightEdge?.Disable(disable);
-      this.start.leftEdge?.Disable(disable);
-      this.start.topEdge?.Disable(disable);
-      this.start.bottomEdge?.Disable(disable);
+      if (disable) {
+        this.start.rightEdge?.Disable(disable);
+        this.start.leftEdge?.Disable(disable);
+        this.start.topEdge?.Disable(disable);
+        this.start.bottomEdge?.Disable(disable);
+      } else {
+        if (this.isHorizontal) {
+          this.start.rightEdge?.Disable(disable);
+          this.start.leftEdge?.Disable(disable);
+        } else if (this.isVertical) {
+          this.start.topEdge?.Disable(disable);
+          this.start.bottomEdge?.Disable(disable);
+        }
+      }
     }
     if (this.end.ComplexNode()) {
-      this.end.rightEdge?.Disable(disable);
-      this.end.leftEdge?.Disable(disable);
-      this.end.topEdge?.Disable(disable);
-      this.end.bottomEdge?.Disable(disable);
+      if (disable) {
+        this.end.rightEdge?.Disable(disable);
+        this.end.leftEdge?.Disable(disable);
+        this.end.topEdge?.Disable(disable);
+        this.end.bottomEdge?.Disable(disable);
+      } else {
+        if (this.isHorizontal) {
+          this.end.rightEdge?.Disable(disable);
+          this.end.leftEdge?.Disable(disable);
+        } else if (this.isVertical) {
+          this.end.topEdge?.Disable(disable);
+          this.end.bottomEdge?.Disable(disable);
+        }
+      }
+    }
+  }
+
+  Move(position: Vector) {
+    let movement: number = 0;
+    if (this.isVertical) {
+      movement = position.x;
+      if (this.start.rightEdge && position.x > this.x1) {
+        const otherEnd = this.start.rightEdge.end;
+        if (position.x > otherEnd.x - otherEnd.radius)
+          movement = otherEnd.x - otherEnd.radius;
+      } else if (this.start.leftEdge && position.x < this.x1) {
+        const otherEnd = this.start.leftEdge.start;
+        if (position.x < otherEnd.x + otherEnd.radius)
+          movement = otherEnd.x + otherEnd.radius;
+      }
+      if (movement != 0 && this.x1 != movement) {
+        this.start.MoveX(movement);
+        Renderer.Render();
+      }
+    } else if (this.isHorizontal) {
+      movement = position.y;
+      if (this.start.topEdge && position.y < this.y1) {
+        const otherEnd = this.start.topEdge.start;
+        if (position.y < otherEnd.y + otherEnd.radius)
+          movement = otherEnd.y + otherEnd.radius;
+      } else if (this.start.bottomEdge && position.y > this.y1) {
+        const otherEnd = this.start.bottomEdge.end;
+        if (position.y > otherEnd.y - otherEnd.radius)
+          movement = otherEnd.y - otherEnd.radius;
+      }
+      if (movement != 0 && this.y1 != movement) {
+        this.start.MoveY(movement);
+        Renderer.Render();
+      }
+    }
+  }
+
+  ExtendDuplicate(offset: number) {
+    if (this.BoundaryEdge()) {
+      let previousNode: Node | undefined;
+      if (this.isHorizontal) {
+        if (!this.start.topEdge) {
+          for (
+            let node: Node | undefined = this.start;
+            node;
+            node = node.leftEdge?.start
+          ) {
+            const newNode = new Node(this.table, node.x, node.y - offset);
+            this.table.AddLink(node, newNode);
+            if (previousNode) this.table.AddLink(newNode, previousNode);
+            previousNode = newNode;
+          }
+          previousNode = (this.start.topEdge as Edge | undefined)?.start;
+          for (
+            let node: Node | undefined = this.end;
+            node;
+            node = node.rightEdge?.end
+          ) {
+            const newNode = new Node(this.table, node.x, node.y - offset);
+            this.table.AddLink(node, newNode);
+            if (previousNode) this.table.AddLink(newNode, previousNode);
+            previousNode = newNode;
+          }
+        }
+        if (!this.end.bottomEdge) {
+          for (
+            let node: Node | undefined = this.start;
+            node;
+            node = node.leftEdge?.start
+          ) {
+            const newNode = new Node(this.table, node.x, node.y + offset);
+            this.table.AddLink(node, newNode);
+            if (previousNode) this.table.AddLink(newNode, previousNode);
+            previousNode = newNode;
+          }
+          previousNode = (this.end.bottomEdge as Edge | undefined)?.end;
+          for (
+            let node: Node | undefined = this.end;
+            node;
+            node = node.rightEdge?.end
+          ) {
+            const newNode = new Node(this.table, node.x, node.y + offset);
+            this.table.AddLink(node, newNode);
+            if (previousNode) this.table.AddLink(newNode, previousNode);
+            previousNode = newNode;
+          }
+        }
+      } else if (this.isVertical) {
+      }
     }
   }
 
   OnMouseButton(
-    position: p5.Vector,
+    position: Vector,
     button: string,
     state: 'PRESSED' | 'RELEASED' | 'CLICKED'
   ): boolean | null {
@@ -256,11 +376,10 @@ export default class Edge
         if (this.disabled) {
           this.Disable(false);
         } else {
-          if (this.isVertical) {
+          if (this.isVertical)
             this.RecursiveSplit((position.y - this.y1) / (this.y2 - this.y1));
-          } else if (this.isHorizontal) {
+          else if (this.isHorizontal)
             this.RecursiveSplit((position.x - this.x1) / (this.x2 - this.x1));
-          }
         }
         Renderer.Render();
         return true;
@@ -289,58 +408,33 @@ export default class Edge
     return null;
   }
 
-  OnMouseMove(position: p5.Vector, button?: string | undefined): void {
-    if (this.isClickHold) {
-      let movement: number = 0;
-      if (this.isVertical) {
-        movement = position.x;
-        if (this.start.rightEdge && position.x > this.x1) {
-          const otherEnd = this.start.rightEdge.end;
-          if (position.x > otherEnd.x - otherEnd.radius)
-            movement = otherEnd.x - otherEnd.radius;
-        } else if (this.start.leftEdge && position.x < this.x1) {
-          const otherEnd = this.start.leftEdge.start;
-          if (position.x < otherEnd.x + otherEnd.radius)
-            movement = otherEnd.x + otherEnd.radius;
-        }
-        if (movement != 0 && this.x1 != movement) {
-          this.start.MoveX(movement);
-          Renderer.Render();
-        }
-      } else if (this.isHorizontal) {
-        movement = position.y;
-        if (this.start.topEdge && position.y < this.y1) {
-          const otherEnd = this.start.topEdge.start;
-          if (position.y < otherEnd.y + otherEnd.radius)
-            movement = otherEnd.y + otherEnd.radius;
-        } else if (this.start.bottomEdge && position.y > this.y1) {
-          const otherEnd = this.start.bottomEdge.end;
-          if (position.y > otherEnd.y - otherEnd.radius)
-            movement = otherEnd.y - otherEnd.radius;
-        }
-        if (movement != 0 && this.y1 != movement) {
-          this.start.MoveY(movement);
-          Renderer.Render();
-        }
+  OnMouseMove(position: Vector, button?: string | undefined): void {
+    if (this.isClickHold && !this.isShiftPressed) {
+      this.Move(position);
+    }
+    if (this.isShiftPressed) {
+      if (!this.dragDuplicateInitialPosition) {
+        this.dragDuplicateInitialPosition = position;
+      } else {
       }
     }
   }
 
   OnKey(button: string, state: 'PRESSED' | 'RELEASED' | 'TYPED'): void {
     if (this.disabled) return;
-    if (button === 'Control' && state === 'PRESSED') this.isCTRLPressed = true;
-    if (button === 'Delete' && state === 'PRESSED' && this.selected) {
+    else if (button === 'Control' && state === 'PRESSED')
+      this.isCTRLPressed = true;
+    else if (button === 'Delete' && state === 'PRESSED' && this.selected) {
       this.Disable();
       if (this.start.IsDissolvable()) this.start.Dissolve();
       Renderer.Render();
-    } else if (state === 'RELEASED') this.isCTRLPressed = false;
-  }
-
-  Equal(rhs: Edge) {
-    return (
-      this.id === rhs.id ||
-      (this.start.Equal(rhs.start) && this.end.Equal(rhs.end))
-    );
+    } else if (button === 'Shift' && state === 'PRESSED')
+      this.isShiftPressed = true;
+    else if (state === 'RELEASED') {
+      this.isCTRLPressed = false;
+      this.isShiftPressed = false;
+      this.dragDuplicateInitialPosition = undefined;
+    }
   }
 
   Render(ctx: p5): void {
