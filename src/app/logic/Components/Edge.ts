@@ -5,7 +5,9 @@ import Context, { ContextObject } from '../Base/Context';
 import OnKey from '../Base/Events/OnKey';
 import OnMouseButton from '../Base/Events/OnMouseButton';
 import OnMouseMove from '../Base/Events/OnMouseMove';
+import OnTouch, { Touch } from '../Base/Events/OnTouch';
 import Renderer, { Renderable } from '../Base/Renderer';
+import Button from './Button';
 import Node from './Node';
 import Table from './Table';
 
@@ -16,6 +18,7 @@ export default class Edge
     OnKey,
     OnMouseMove,
     OnMouseButton,
+    OnTouch,
     Collidable
 {
   zIndex: number = 0;
@@ -32,16 +35,15 @@ export default class Edge
   color: number[];
   highlightColor: number[];
 
+  extend_button?: Button;
+  add_button?: Button;
+
   isClickHold: boolean = false;
   selected: boolean = false;
+  selectPositionN?: number;
 
   disabled: boolean = false;
   isHover: boolean = false;
-
-  isCTRLPressed = false;
-  isShiftPressed = false;
-
-  dragDuplicateInitialPosition?: Vector;
 
   private __isVertical: boolean;
   private __isHorizontal: boolean;
@@ -81,6 +83,10 @@ export default class Edge
     return Vector.dist(this.start.point, this.end.point);
   }
 
+  get center() {
+    return new Vector((this.x2 + this.x1) / 2, (this.y2 + this.y1) / 2);
+  }
+
   constructor(
     table: Table,
     nodeA: Node,
@@ -113,7 +119,130 @@ export default class Edge
   }
 
   OnContextInit(ctx: Context): void {
+    if (this.BoundaryEdge()) {
+      this.InitExtendButton();
+      this.InitAddButtonPosition();
+    }
     Renderer.Render();
+  }
+
+  InitExtendButton() {
+    const center = this.center;
+    if (this.isHorizontal) {
+      this.extend_button = new Button(
+        'ARROW',
+        center.x,
+        center.y + (this.start.topEdge ? 10 : -10),
+        8,
+        this.start.topEdge ? 'DOWN' : 'UP'
+      );
+    } else if (this.isVertical) {
+      this.extend_button = new Button(
+        'ARROW',
+        center.x + (this.start.leftEdge ? 10 : -10),
+        center.y,
+        8,
+        this.start.leftEdge ? 'RIGHT' : 'LEFT'
+      );
+    }
+    if (this.extend_button)
+      this.extend_button.OnPress = () => {
+        if (this.isVertical)
+          this.ExtendDuplicate(
+            this.start.leftEdge?.length || this.start.rightEdge?.length
+          );
+        else if (this.isHorizontal)
+          this.ExtendDuplicate(
+            this.start.topEdge?.length || this.start.bottomEdge?.length
+          );
+      };
+  }
+
+  InitAddButtonPosition() {
+    const center = this.center;
+    if (this.isHorizontal) {
+      this.add_button = new Button(
+        'PLUS',
+        center.x,
+        center.y + (this.start.topEdge ? -10 : 10),
+        8
+      );
+    } else if (this.isVertical) {
+      this.add_button = new Button(
+        'PLUS',
+        center.x + (this.start.leftEdge ? -10 : 10),
+        center.y,
+        8
+      );
+    }
+    if (this.add_button) {
+      this.add_button.OnPress = () => {
+        if (this.selectPositionN) this.RecursiveSplit(this.selectPositionN);
+      };
+    }
+  }
+
+  CalculateAddButtonProps() {
+    if (this.BoundaryEdge()) {
+      if (this.add_button) {
+        let position = this.center;
+        if (this.selectPositionN) {
+          position = Vector.lerp(
+            this.start.point,
+            this.end.point,
+            this.selectPositionN
+          );
+        }
+        if (this.isVertical) {
+          this.add_button.position = new Vector(
+            position.x + (this.start.leftEdge ? -10 : 10),
+            position.y
+          );
+        } else if (this.isHorizontal) {
+          this.add_button.position = new Vector(
+            position.x,
+            position.y + (this.start.topEdge ? -10 : 10)
+          );
+        }
+      } else {
+        this.InitExtendButton();
+      }
+    } else {
+      this.extend_button = undefined;
+    }
+  }
+
+  CalculateExtendButtonProps() {
+    if (this.BoundaryEdge()) {
+      if (this.extend_button) {
+        const center = this.center;
+        if (this.isVertical) {
+          this.extend_button.position = new Vector(
+            center.x + (this.start.leftEdge ? 10 : -10),
+            center.y
+          );
+          const dir = this.start.leftEdge ? 'RIGHT' : 'LEFT';
+          if (this.extend_button.direction != dir) {
+            this.extend_button.direction = dir;
+            this.extend_button.RecalculateProps();
+          }
+        } else if (this.isHorizontal) {
+          this.extend_button.position = new Vector(
+            center.x,
+            center.y + (this.start.topEdge ? 10 : -10)
+          );
+          const dir = this.start.topEdge ? 'DOWN' : 'UP';
+          if (this.extend_button.direction != dir) {
+            this.extend_button.direction = dir;
+            this.extend_button.RecalculateProps();
+          }
+        }
+      } else {
+        this.InitExtendButton();
+      }
+    } else {
+      this.extend_button = undefined;
+    }
   }
 
   Bbox(): number[] {
@@ -132,24 +261,6 @@ export default class Edge
         this.end.y + this.edgeWidth,
       ];
     }
-  }
-
-  IsValidStart(point: Vector) {
-    if (this.isHorizontal) {
-      return point.x < this.end.point.x - this.end.radius;
-    } else if (this.isVertical) {
-      return point.y < this.end.point.y - this.end.radius;
-    }
-    return false;
-  }
-
-  IsValidEnd(point: Vector) {
-    if (this.isHorizontal) {
-      return point.x > this.start.point.x + this.start.radius;
-    } else if (this.isVertical) {
-      return point.y > this.start.point.y + this.start.radius;
-    }
-    return false;
   }
 
   SplitEdge(n: number) {
@@ -221,8 +332,15 @@ export default class Edge
     }
   }
 
-  Select() {
-    this.selected = true;
+  Select(select: boolean = true, select_position?: Vector) {
+    this.selected = select;
+    if (select_position) {
+      this.selectPositionN =
+        Vector.dist(this.start.point, select_position) /
+        Vector.dist(this.start.point, this.end.point);
+    } else {
+      this.selectPositionN = undefined;
+    }
   }
 
   Equal(rhs: Edge) {
@@ -311,19 +429,32 @@ export default class Edge
     }
   }
 
-  ExtendDuplicate(offset: number) {
+  ExtendDuplicate(offset: number = 0) {
     if (this.BoundaryEdge()) {
+      const newEdges: Edge[] = [];
       let previousNode: Node | undefined;
       if (this.isHorizontal) {
         if (!this.start.topEdge) {
+          if (this.extend_button) this.extend_button = undefined;
           for (
             let node: Node | undefined = this.start;
             node;
             node = node.leftEdge?.start
           ) {
-            const newNode = new Node(this.table, node.x, node.y - offset);
-            this.table.AddLink(node, newNode);
-            if (previousNode) this.table.AddLink(newNode, previousNode);
+            if (node.leftEdge?.extend_button)
+              node.leftEdge.extend_button = undefined;
+            const newNode = new Node(
+              this.table,
+              node.x,
+              node.y - node.radius - offset
+            );
+            let newEdge = this.table.AddLink(node, newNode);
+            newEdge.disabled = !!node.bottomEdge?.disabled;
+            newEdges.push(newEdge);
+            if (previousNode) {
+              newEdge = this.table.AddLink(newNode, previousNode);
+              newEdges.push(newEdge);
+            }
             previousNode = newNode;
           }
           previousNode = (this.start.topEdge as Edge | undefined)?.start;
@@ -332,37 +463,171 @@ export default class Edge
             node;
             node = node.rightEdge?.end
           ) {
-            const newNode = new Node(this.table, node.x, node.y - offset);
-            this.table.AddLink(node, newNode);
-            if (previousNode) this.table.AddLink(newNode, previousNode);
+            if (node.rightEdge?.extend_button)
+              node.rightEdge.extend_button = undefined;
+            const newNode = new Node(
+              this.table,
+              node.x,
+              node.y - node.radius - offset
+            );
+            let newEdge = this.table.AddLink(node, newNode);
+            newEdge.disabled = !!node.bottomEdge?.disabled;
+            newEdges.push(newEdge);
+
+            if (previousNode) {
+              newEdge = this.table.AddLink(newNode, previousNode);
+              newEdges.push(newEdge);
+            }
             previousNode = newNode;
           }
         }
-        if (!this.end.bottomEdge) {
+        if (!this.start.bottomEdge) {
+          if (this.extend_button) this.extend_button = undefined;
           for (
             let node: Node | undefined = this.start;
             node;
             node = node.leftEdge?.start
           ) {
-            const newNode = new Node(this.table, node.x, node.y + offset);
-            this.table.AddLink(node, newNode);
-            if (previousNode) this.table.AddLink(newNode, previousNode);
+            if (node.leftEdge?.extend_button)
+              node.leftEdge.extend_button = undefined;
+            const newNode = new Node(
+              this.table,
+              node.x,
+              node.y + node.radius + offset
+            );
+            let newEdge = this.table.AddLink(node, newNode);
+            newEdge.disabled = !!node.topEdge?.disabled;
+            newEdges.push(newEdge);
+
+            if (previousNode) {
+              newEdge = this.table.AddLink(newNode, previousNode);
+              newEdges.push(newEdge);
+            }
             previousNode = newNode;
           }
-          previousNode = (this.end.bottomEdge as Edge | undefined)?.end;
+          previousNode = (this.start.bottomEdge as Edge | undefined)?.end;
           for (
             let node: Node | undefined = this.end;
             node;
             node = node.rightEdge?.end
           ) {
-            const newNode = new Node(this.table, node.x, node.y + offset);
-            this.table.AddLink(node, newNode);
-            if (previousNode) this.table.AddLink(newNode, previousNode);
+            if (node.rightEdge?.extend_button)
+              node.rightEdge.extend_button = undefined;
+            const newNode = new Node(
+              this.table,
+              node.x,
+              node.y + node.radius + offset
+            );
+            let newEdge = this.table.AddLink(node, newNode);
+            newEdge.disabled = !!node.topEdge?.disabled;
+            newEdges.push(newEdge);
+
+            if (previousNode) {
+              newEdge = this.table.AddLink(newNode, previousNode);
+              newEdges.push(newEdge);
+            }
             previousNode = newNode;
           }
         }
       } else if (this.isVertical) {
+        if (!this.start.leftEdge) {
+          if (this.extend_button) this.extend_button = undefined;
+          for (
+            let node: Node | undefined = this.start;
+            node;
+            node = node.topEdge?.start
+          ) {
+            if (node.topEdge?.extend_button)
+              node.topEdge.extend_button = undefined;
+            const newNode = new Node(
+              this.table,
+              node.x - node.radius - offset,
+              node.y
+            );
+            let newEdge = this.table.AddLink(node, newNode);
+            newEdge.disabled = !!node.rightEdge?.disabled;
+            newEdges.push(newEdge);
+
+            if (previousNode) {
+              newEdge = this.table.AddLink(newNode, previousNode);
+              newEdges.push(newEdge);
+            }
+            previousNode = newNode;
+          }
+          previousNode = (this.start.leftEdge as Edge | undefined)?.start;
+          for (
+            let node: Node | undefined = this.end;
+            node;
+            node = node.bottomEdge?.end
+          ) {
+            if (node.bottomEdge?.extend_button)
+              node.bottomEdge.extend_button = undefined;
+            const newNode = new Node(
+              this.table,
+              node.x - node.radius - offset,
+              node.y
+            );
+            let newEdge = this.table.AddLink(node, newNode);
+            newEdge.disabled = !!node.rightEdge?.disabled;
+            newEdges.push(newEdge);
+
+            if (previousNode) {
+              newEdge = this.table.AddLink(newNode, previousNode);
+              newEdges.push(newEdge);
+            }
+            previousNode = newNode;
+          }
+        }
+        if (!this.start.rightEdge) {
+          if (this.extend_button) this.extend_button = undefined;
+          for (
+            let node: Node | undefined = this.start;
+            node;
+            node = node.topEdge?.start
+          ) {
+            if (node.topEdge?.extend_button)
+              node.topEdge.extend_button = undefined;
+            const newNode = new Node(
+              this.table,
+              node.x + node.radius + offset,
+              node.y
+            );
+            let newEdge = this.table.AddLink(node, newNode);
+            newEdge.disabled = !!node.leftEdge?.disabled;
+            newEdges.push(newEdge);
+
+            if (previousNode) {
+              newEdge = this.table.AddLink(newNode, previousNode);
+              newEdges.push(newEdge);
+            }
+            previousNode = newNode;
+          }
+          previousNode = (this.start.rightEdge as Edge | undefined)?.end;
+          for (
+            let node: Node | undefined = this.end;
+            node;
+            node = node.bottomEdge?.end
+          ) {
+            if (node.bottomEdge?.extend_button)
+              node.bottomEdge.extend_button = undefined;
+            const newNode = new Node(
+              this.table,
+              node.x + node.radius + offset,
+              node.y
+            );
+            let newEdge = this.table.AddLink(node, newNode);
+            newEdge.disabled = !!node.leftEdge?.disabled;
+            newEdges.push(newEdge);
+
+            if (previousNode) {
+              newEdge = this.table.AddLink(newNode, previousNode);
+              newEdges.push(newEdge);
+            }
+            previousNode = newNode;
+          }
+        }
       }
+      for (const edge of newEdges) Context.context?.AddObject(edge);
     }
   }
 
@@ -371,6 +636,10 @@ export default class Edge
     button: string,
     state: 'PRESSED' | 'RELEASED' | 'CLICKED'
   ): boolean | null {
+    if (this.selected) {
+      this.extend_button?.OnMouseButton(position, button, state);
+      this.add_button?.OnMouseButton(position, button, state);
+    }
     if (button === 'center' && state === 'RELEASED') {
       if (this.collider.PointCollision(position)) {
         if (this.disabled) {
@@ -390,13 +659,13 @@ export default class Edge
           Context.context?.canvas?.style('cursor', 'e-resize');
         else if (this.isHorizontal)
           Context.context?.canvas?.style('cursor', 'n-resize');
-        this.Select();
+        this.Select(true, position);
         this.table.Focus();
         this.isClickHold = true;
         Renderer.Render();
         return true;
-      } else if (!this.isCTRLPressed) {
-        this.selected = false;
+      } else if (!Context.CTRLDown()) {
+        this.Select(false);
         Renderer.Render();
         return true;
       }
@@ -409,32 +678,49 @@ export default class Edge
   }
 
   OnMouseMove(position: Vector, button?: string | undefined): void {
-    if (this.isClickHold && !this.isShiftPressed) {
-      this.Move(position);
+    if (this.selected) {
+      this.extend_button?.OnMouseMove(position, button);
+      this.add_button?.OnMouseMove(position, button);
     }
-    if (this.isShiftPressed) {
-      if (!this.dragDuplicateInitialPosition) {
-        this.dragDuplicateInitialPosition = position;
-      } else {
-      }
+    if (this.isClickHold) {
+      this.Move(position);
     }
   }
 
   OnKey(button: string, state: 'PRESSED' | 'RELEASED' | 'TYPED'): void {
     if (this.disabled) return;
-    else if (button === 'Control' && state === 'PRESSED')
-      this.isCTRLPressed = true;
     else if (button === 'Delete' && state === 'PRESSED' && this.selected) {
       this.Disable();
-      if (this.start.IsDissolvable()) this.start.Dissolve();
+      this.start.Dissolve();
       Renderer.Render();
-    } else if (button === 'Shift' && state === 'PRESSED')
-      this.isShiftPressed = true;
-    else if (state === 'RELEASED') {
-      this.isCTRLPressed = false;
-      this.isShiftPressed = false;
-      this.dragDuplicateInitialPosition = undefined;
     }
+  }
+
+  OnTouch(
+    touches: Touch[],
+    state: 'STARTED' | 'MOVED' | 'ENDED'
+  ): boolean | null {
+    if (touches.length === 1) {
+      if (this.selected) {
+        this.extend_button?.OnTouch(touches, state);
+        this.add_button?.OnTouch(touches, state);
+      }
+      const touchPosition = new Vector(touches[0].x, touches[0].y);
+      if (state === 'STARTED') {
+        return this.OnMouseButton(touchPosition, 'left', 'PRESSED');
+      } else if (state === 'MOVED') {
+        this.OnMouseMove(touchPosition, 'left');
+      }
+    }
+    if (state === 'ENDED') {
+      this.OnMouseButton(new Vector(), 'left', 'RELEASED');
+    }
+    return null;
+  }
+
+  PreRender(ctx: p5): void {
+    this.CalculateExtendButtonProps();
+    this.CalculateAddButtonProps();
   }
 
   Render(ctx: p5): void {
@@ -449,14 +735,17 @@ export default class Edge
       }
       return;
     }
-    if (this.isClickHold || this.selected)
+    if (this.isClickHold || this.selected) {
+      this.extend_button?.Render(ctx);
+      this.add_button?.Render(ctx);
       ctx.stroke(
         this.highlightColor[0],
         this.highlightColor[1],
         this.highlightColor[2],
         this.highlightColor[3]
       );
-    else ctx.stroke(this.color[0], this.color[1], this.color[2], this.color[3]);
+    } else
+      ctx.stroke(this.color[0], this.color[1], this.color[2], this.color[3]);
     ctx.strokeWeight(this.edgeWidth);
     ctx.line(this.start.x, this.start.y, this.end.x, this.end.y);
 

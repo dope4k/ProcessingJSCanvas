@@ -284,30 +284,35 @@ export default class Table
     touches: Touch[],
     state: 'STARTED' | 'MOVED' | 'ENDED'
   ): boolean | null {
-    if (touches.length >= 2 && state === 'STARTED') {
-      this.initialTouches = [touches[0], touches[1]];
-    }
-    if (
-      this.initialTouches.length >= 2 &&
-      touches.length >= 2 &&
-      state === 'MOVED'
-    ) {
-      const [midPointX, midPointY] = [
-        (touches[0].x + touches[1].x) / 2,
-        (touches[0].y + touches[1].y) / 2,
-      ];
+    if (touches.length === 1) {
+      const touchPosition = new Vector(touches[0].x, touches[0].y);
+      if (state === 'STARTED') {
+        return this.OnMouseButton(touchPosition, 'left', 'PRESSED');
+      } else if (state === 'MOVED') {
+        this.OnMouseMove(touchPosition, 'left');
+      }
+    } else if (touches.length === 2) {
+      if (state === 'STARTED') this.initialTouches = [touches[0], touches[1]];
+      else if (state === 'MOVED' && this.initialTouches.length == 2) {
+        const [midPointX, midPointY] = [
+          (touches[0].x + touches[1].x) / 2,
+          (touches[0].y + touches[1].y) / 2,
+        ];
 
-      this.Scale(
-        (Math.abs(touches[1].x - touches[0].x) -
-          Math.abs(this.initialTouches[1].x - this.initialTouches[0].x)) *
-          0.01,
-        (Math.abs(touches[1].y - touches[0].y) -
-          Math.abs(this.initialTouches[1].y - this.initialTouches[0].y)) *
-          0.01,
-        midPointX,
-        midPointY
-      );
-      return false;
+        this.Scale(
+          (Math.abs(touches[1].x - touches[0].x) -
+            Math.abs(this.initialTouches[1].x - this.initialTouches[0].x)) *
+            0.01,
+          (Math.abs(touches[1].y - touches[0].y) -
+            Math.abs(this.initialTouches[1].y - this.initialTouches[0].y)) *
+            0.01,
+          midPointX,
+          midPointY
+        );
+        return false;
+      }
+    } else if (state === 'ENDED') {
+      this.OnMouseButton(new Vector(), 'left', 'RELEASED');
     }
     return null;
   }
@@ -319,7 +324,7 @@ export default class Table
 
       if (this.extents && this.focus) {
         ctx.fill(0, 0, 0, 0);
-        ctx.stroke(128, 128, 128, 256);
+        ctx.stroke(128, 128, 128, 255);
         ctx.strokeWeight(1);
         ctx.rect(
           this.extents[0].x - 10,

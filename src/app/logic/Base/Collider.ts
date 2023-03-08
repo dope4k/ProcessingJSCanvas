@@ -25,4 +25,9 @@ export default class Collider {
     const bbox = this.object.Bbox();
     return Collider.PointCollision(point, bbox);
   }
+
+  PointCollisionCircle(point: Vector, radius: number): boolean {
+    const bbox = this.object.Bbox();
+    return Vector.dist(new Vector(bbox[0], bbox[1]), point) <= radius;
+  }
 }

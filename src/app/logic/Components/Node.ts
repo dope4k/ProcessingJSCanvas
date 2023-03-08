@@ -103,7 +103,6 @@ export default class Node implements Renderable, Collidable {
       currentEdge.x1 = currentEdge.x2 = x;
     }
   }
-
   MoveY(y: number) {
     this.y = y;
     for (
@@ -130,7 +129,6 @@ export default class Node implements Renderable, Collidable {
       this.leftEdge?.selected
     );
   }
-
   ComplexNode() {
     if (this.topEdge?.disabled && this.leftEdge?.disabled) return true;
     else if (this.topEdge?.disabled && this.rightEdge?.disabled) return true;
@@ -138,7 +136,6 @@ export default class Node implements Renderable, Collidable {
     else if (this.bottomEdge?.disabled && this.rightEdge?.disabled) return true;
     return false;
   }
-
   BoundaryNode() {
     let count = 0;
     if (!this.topEdge) ++count;
@@ -148,30 +145,9 @@ export default class Node implements Renderable, Collidable {
     return count >= 2;
   }
 
-  IsDissolvable() {
+  IsDissolvableHorizontal() {
     let check = true;
-    if (this.topEdge?.disabled && this.bottomEdge?.disabled) {
-      for (
-        let edge: Node | undefined = this.topEdge?.start;
-        edge !== undefined && check;
-        edge = edge.topEdge?.start
-      ) {
-        check = !(
-          edge.topEdge?.disabled === false ||
-          edge.bottomEdge?.disabled === false
-        );
-      }
-      for (
-        let edge: Node | undefined = this.bottomEdge?.end;
-        edge !== undefined && check;
-        edge = edge.bottomEdge?.end
-      ) {
-        check = !(
-          edge.topEdge?.disabled === false ||
-          edge.bottomEdge?.disabled === false
-        );
-      }
-    } else if (this.rightEdge?.disabled && this.leftEdge?.disabled) {
+    if (this.rightEdge?.disabled && this.leftEdge?.disabled) {
       for (
         let edge: Node | undefined = this.leftEdge?.start;
         edge !== undefined && check;
@@ -195,8 +171,33 @@ export default class Node implements Renderable, Collidable {
     } else return false;
     return check;
   }
-
-  Dissolve() {
+  IsDissolvableVertical() {
+    let check = true;
+    if (this.topEdge?.disabled && this.bottomEdge?.disabled) {
+      for (
+        let edge: Node | undefined = this.topEdge?.start;
+        edge !== undefined && check;
+        edge = edge.topEdge?.start
+      ) {
+        check = !(
+          edge.topEdge?.disabled === false ||
+          edge.bottomEdge?.disabled === false
+        );
+      }
+      for (
+        let edge: Node | undefined = this.bottomEdge?.end;
+        edge !== undefined && check;
+        edge = edge.bottomEdge?.end
+      ) {
+        check = !(
+          edge.topEdge?.disabled === false ||
+          edge.bottomEdge?.disabled === false
+        );
+      }
+    } else return false;
+    return check;
+  }
+  DissolveVertical() {
     if (
       (this.topEdge === undefined || this.topEdge?.disabled) &&
       (this.bottomEdge === undefined || this.bottomEdge?.disabled)
@@ -216,11 +217,14 @@ export default class Node implements Renderable, Collidable {
         }
 
         this.leftEdge = this.rightEdge = undefined;
-        this.topEdge?.start.Dissolve();
-        this.bottomEdge?.end.Dissolve();
+        this.topEdge?.start.DissolveVertical();
+        this.bottomEdge?.end.DissolveVertical();
         this.table.RemoveNode(this);
       }
-    } else if (
+    }
+  }
+  DissolveHorizontal() {
+    if (
       (this.rightEdge === undefined || this.rightEdge?.disabled) &&
       (this.leftEdge === undefined || this.leftEdge?.disabled)
     ) {
@@ -238,10 +242,17 @@ export default class Node implements Renderable, Collidable {
           this.table.RemoveEdge(this.leftEdge);
         }
         this.topEdge = this.bottomEdge = undefined;
-        this.leftEdge?.start.Dissolve();
-        this.rightEdge?.end.Dissolve();
+        this.leftEdge?.start.DissolveHorizontal();
+        this.rightEdge?.end.DissolveHorizontal();
         this.table.RemoveNode(this);
       }
+    }
+  }
+  Dissolve() {
+    if (this.IsDissolvableHorizontal()) {
+      this.DissolveHorizontal();
+    } else if (this.IsDissolvableVertical()) {
+      this.DissolveVertical();
     }
   }
 

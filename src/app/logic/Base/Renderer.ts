@@ -4,6 +4,7 @@ import { ContextObject } from './Context';
 export interface Renderable {
   zIndex: number;
   Render(ctx: p5): void | Promise<void>;
+  PreRender?(ctx: p5): void;
 }
 
 export default class Renderer {
@@ -42,6 +43,9 @@ export default class Renderer {
   Render(ctx: p5) {
     if (this.dirty) {
       ctx.background(255, 255, 255, 255);
+      for (const obj of this.render_objects) {
+        if (obj.PreRender) obj.PreRender(ctx);
+      }
       for (const obj of this.render_objects) {
         obj.Render(ctx);
       }

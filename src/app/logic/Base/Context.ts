@@ -59,6 +59,22 @@ export default class Context {
     this.Setup();
   }
 
+  static CTRLDown(): boolean {
+    return !!Context.context?.renderer.keyIsDown(
+      Context.context.renderer.CONTROL
+    );
+  }
+
+  static ShiftDown(): boolean {
+    return !!Context.context?.renderer.keyIsDown(
+      Context.context.renderer.SHIFT
+    );
+  }
+
+  static AltDown(): boolean {
+    return !!Context.context?.renderer.keyIsDown(Context.context.renderer.ALT);
+  }
+
   private sketch(ctx: p5) {
     ctx.keyPressed = () => this.OnKey(ctx.key, 'PRESSED');
     ctx.keyReleased = () => this.OnKey(ctx.key, 'RELEASED');

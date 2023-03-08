@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import Button from 'src/app/logic/Components/Button';
 import Image from 'src/app/logic/Components/Image';
 import Context from '../../logic/Base/Context';
 import Table from '../../logic/Components/Table';
@@ -6,6 +7,7 @@ import Table from '../../logic/Components/Table';
 @Component({
   selector: 'app-processing-canvas',
   templateUrl: './processing-canvas.component.html',
+  styleUrls: ['./processing-canvas.component.scss'],
 })
 export class ProcessingCanvasComponent {
   context?: Context;
@@ -18,10 +20,7 @@ export class ProcessingCanvasComponent {
     img.src = src;
 
     img.onload = () => {
-      const width = img.width <= 1280 ? img.width : 1280;
-      const height = img.height <= 720 ? img.height : 720;
-
-      this.context = new Context(width, height, 'canvas');
+      this.context = new Context(1000, 800, 'canvas');
       this.context.InitRenderer();
 
       const table = new Table();
