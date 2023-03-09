@@ -1,8 +1,8 @@
 import { Vector } from 'p5';
 
 export interface Collidable {
+  bbox: number[];
   collider: Collider;
-  Bbox(): number[];
 }
 
 export default class Collider {
@@ -22,12 +22,11 @@ export default class Collider {
   }
 
   PointCollision(point: Vector): boolean {
-    const bbox = this.object.Bbox();
-    return Collider.PointCollision(point, bbox);
+    return Collider.PointCollision(point, this.object.bbox);
   }
 
   PointCollisionCircle(point: Vector, radius: number): boolean {
-    const bbox = this.object.Bbox();
+    const bbox = this.object.bbox;
     return Vector.dist(new Vector(bbox[0], bbox[1]), point) <= radius;
   }
 }

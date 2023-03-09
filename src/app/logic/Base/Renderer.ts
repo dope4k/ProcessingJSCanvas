@@ -1,5 +1,5 @@
 import * as p5 from 'p5';
-import { ContextObject } from './Context';
+import Context, { ContextObject } from './Context';
 
 export interface Renderable {
   zIndex: number;
@@ -43,8 +43,10 @@ export default class Renderer {
   Render(ctx: p5) {
     if (this.dirty) {
       ctx.background(255, 255, 255, 255);
-      for (const obj of this.render_objects) {
-        if (obj.PreRender) obj.PreRender(ctx);
+      if (!Context.context?.selectionMode) {
+        for (const obj of this.render_objects) {
+          if (obj.PreRender) obj.PreRender(ctx);
+        }
       }
       for (const obj of this.render_objects) {
         obj.Render(ctx);

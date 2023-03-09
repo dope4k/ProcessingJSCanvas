@@ -4,8 +4,5 @@ export interface Touch {
   id: number;
 }
 export default interface OnTouch {
-  OnTouch(
-    touches: Touch[],
-    state: 'STARTED' | 'MOVED' | 'ENDED'
-  ): boolean | null;
+  OnTouch(touches: Touch[], state: 'STARTED' | 'MOVED' | 'ENDED'): boolean;
 }

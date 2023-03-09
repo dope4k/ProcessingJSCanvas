@@ -2,12 +2,26 @@ import * as p5 from 'p5';
 import { Vector } from 'p5';
 import Collider, { Collidable } from '../Base/Collider';
 import Context, { ContextObject } from '../Base/Context';
+import OnMouseButton from '../Base/Events/OnMouseButton';
+import OnMouseMove from '../Base/Events/OnMouseMove';
+import OnTouch, { Touch } from '../Base/Events/OnTouch';
 import { Renderable } from '../Base/Renderer';
+import Button from './Button';
 import Edge from './Edge';
 import Table from './Table';
 
-export default class Node implements Renderable, Collidable {
+export default class Node
+  implements
+    ContextObject,
+    Renderable,
+    Collidable,
+    OnMouseButton,
+    OnMouseMove,
+    OnTouch
+{
   zIndex: number = 0;
+
+  id: number;
 
   point: Vector;
   radius: number;
@@ -17,7 +31,17 @@ export default class Node implements Renderable, Collidable {
   rightEdge?: Edge = undefined;
   leftEdge?: Edge = undefined;
 
+  bbox: number[] = [];
   collider: Collider;
+
+  merge_all_button?: Button;
+
+  focusHorizontal: boolean = false;
+  focusVertical: boolean = false;
+
+  selectionID: number = -1;
+  selectedCell: boolean = false;
+  previousSelectionState: boolean = false;
 
   table: Table;
 
@@ -38,16 +62,141 @@ export default class Node implements Renderable, Collidable {
     this.point = new Vector(x, y);
     this.table = table;
     this.radius = radius;
+
+    this.id = Context.id;
     this.collider = new Collider(this);
   }
 
-  Bbox(): number[] {
-    return [
-      this.x - this.radius,
-      this.y - this.radius,
-      this.x + this.radius,
-      this.y + this.radius,
-    ];
+  OnContextInit?(ctx: Context): void {
+    this.InitMergeAllButton();
+  }
+
+  InitMergeAllButton() {
+    if (
+      this.merge_all_button ||
+      this.BoundaryNode() ||
+      !this.bottomEdge ||
+      !this.rightEdge
+    )
+      return;
+    if (!this.topEdge) {
+      this.merge_all_button = new Button('CROSS', this.x, this.y - 10, 8, 'UP');
+    } else if (!this.leftEdge) {
+      this.merge_all_button = new Button(
+        'CROSS',
+        this.x - 10,
+        this.y,
+        8,
+        'LEFT'
+      );
+    }
+    if (this.merge_all_button) {
+      this.merge_all_button.OnPress = () => {
+        if (!this.topEdge) {
+          for (
+            let node: Node | undefined = this;
+            node;
+            node = node.bottomEdge?.end
+          ) {
+            if (this.merge_all_button?.shape === 'CROSS') {
+              node.bottomEdge?.Disable();
+              node.Dissolve();
+            } else if (this.merge_all_button?.shape === 'SYNC') {
+              node.bottomEdge?.Disable(false);
+            }
+          }
+        } else if (!this.leftEdge) {
+          for (
+            let node: Node | undefined = this;
+            node;
+            node = node.rightEdge?.end
+          ) {
+            if (this.merge_all_button?.shape === 'CROSS') {
+              node.rightEdge?.Disable();
+              node.Dissolve();
+            } else if (this.merge_all_button?.shape === 'SYNC') {
+              node.rightEdge?.Disable(false);
+            }
+          }
+        }
+      };
+    }
+  }
+
+  CalculateMergeAllButtonProps() {
+    if (this.merge_all_button) {
+      if (!this.topEdge) {
+        this.merge_all_button.position.x = this.x;
+        this.merge_all_button.position.y = this.y - 10;
+        for (
+          let node: Node | undefined = this;
+          node;
+          node = node.bottomEdge?.end
+        ) {
+          if (node.bottomEdge?.selected) {
+            if (
+              node.bottomEdge.disabled &&
+              this.merge_all_button.shape !== 'SYNC'
+            ) {
+              this.merge_all_button.shape = 'SYNC';
+              this.merge_all_button.RecalculateProps();
+            } else if (
+              !node.bottomEdge.disabled &&
+              this.merge_all_button.shape !== 'CROSS'
+            ) {
+              this.merge_all_button.shape = 'CROSS';
+              this.merge_all_button.RecalculateProps();
+            }
+            break;
+          }
+        }
+      } else if (!this.leftEdge) {
+        this.merge_all_button.position.x = this.x - 10;
+        this.merge_all_button.position.y = this.y;
+        for (
+          let node: Node | undefined = this;
+          node;
+          node = node.rightEdge?.end
+        ) {
+          if (node.rightEdge?.selected) {
+            if (
+              node.rightEdge.disabled &&
+              this.merge_all_button.shape !== 'SYNC'
+            ) {
+              this.merge_all_button.shape = 'SYNC';
+              this.merge_all_button.RecalculateProps();
+            } else if (
+              !node.rightEdge.disabled &&
+              this.merge_all_button.shape !== 'CROSS'
+            ) {
+              this.merge_all_button.shape = 'CROSS';
+              this.merge_all_button.RecalculateProps();
+            }
+            break;
+          }
+        }
+      } else {
+        this.merge_all_button = undefined;
+      }
+    } else {
+      this.InitMergeAllButton();
+    }
+  }
+
+  CalculateBbox() {
+    if (this.bbox.length !== 0) {
+      this.bbox[0] = this.x - this.radius;
+      this.bbox[1] = this.y - this.radius;
+      this.bbox[2] = this.x + this.radius;
+      this.bbox[3] = this.y + this.radius;
+    } else {
+      this.bbox = [
+        this.x - this.radius,
+        this.y - this.radius,
+        this.x + this.radius,
+        this.y + this.radius,
+      ];
+    }
   }
 
   AddEdge(edge: Edge) {
@@ -143,6 +292,25 @@ export default class Node implements Renderable, Collidable {
     if (!this.leftEdge) ++count;
     if (!this.rightEdge) ++count;
     return count >= 2;
+  }
+
+  IsFocusVertical() {
+    for (let node: Node | undefined = this; node; node = node.topEdge?.start) {
+      if (node.topEdge?.selected) return true;
+    }
+    for (let node: Node | undefined = this; node; node = node.bottomEdge?.end) {
+      if (node.bottomEdge?.selected) return true;
+    }
+    return false;
+  }
+  IsFocusHorizontal() {
+    for (let node: Node | undefined = this; node; node = node.leftEdge?.start) {
+      if (node.leftEdge?.selected) return true;
+    }
+    for (let node: Node | undefined = this; node; node = node.rightEdge?.end) {
+      if (node.rightEdge?.selected) return true;
+    }
+    return false;
   }
 
   IsDissolvableHorizontal() {
@@ -256,9 +424,85 @@ export default class Node implements Renderable, Collidable {
     }
   }
 
+  MergeCells() {
+    if (this.selectedCell && this.rightEdge?.end.selectedCell) {
+      const mergeEdge = this.rightEdge.end.bottomEdge;
+      mergeEdge?.Disable();
+      mergeEdge?.start.Dissolve();
+    }
+    if (this.selectedCell && this.bottomEdge?.end.selectedCell) {
+      const mergeEdge = this.bottomEdge.end.rightEdge;
+      mergeEdge?.Disable();
+      mergeEdge?.start.Dissolve();
+    }
+  }
+  UnMergeCells() {
+    if (this.selectedCell && this.rightEdge?.end.selectedCell) {
+      const mergeEdge = this.rightEdge.end.bottomEdge;
+      mergeEdge?.Disable(false);
+    }
+    if (this.selectedCell && this.bottomEdge?.end.selectedCell) {
+      const mergeEdge = this.bottomEdge.end.rightEdge;
+      mergeEdge?.Disable(false);
+    }
+  }
+
+  OnMouseButton(
+    position: p5.Vector,
+    button: string,
+    state: 'PRESSED' | 'RELEASED' | 'CLICKED'
+  ): boolean {
+    if (
+      (this.focusHorizontal && (!this.leftEdge || !this.rightEdge)) ||
+      (this.focusVertical && (!this.topEdge || !this.bottomEdge))
+    ) {
+      const check = this.merge_all_button?.OnMouseButton(
+        position,
+        button,
+        state
+      );
+      if (check !== undefined) return check;
+    }
+    return true;
+  }
+
+  OnMouseMove(position: p5.Vector, button?: string | undefined): void {
+    if (
+      (this.focusHorizontal && (!this.leftEdge || !this.rightEdge)) ||
+      (this.focusVertical && (!this.topEdge || !this.bottomEdge))
+    )
+      this.merge_all_button?.OnMouseMove(position, button);
+  }
+
+  OnTouch(touches: Touch[], state: 'STARTED' | 'MOVED' | 'ENDED'): boolean {
+    if (
+      (this.focusHorizontal && (!this.leftEdge || !this.rightEdge)) ||
+      (this.focusVertical && (!this.topEdge || !this.bottomEdge))
+    ) {
+      const check = this.merge_all_button?.OnTouch(touches, state);
+      if (check !== undefined) return check;
+    }
+    return true;
+  }
+
+  PreRender(ctx: p5): void {
+    this.CalculateBbox();
+    this.focusHorizontal = this.IsFocusHorizontal();
+    this.focusVertical = this.IsFocusVertical();
+    if (
+      (this.focusHorizontal && (!this.leftEdge || !this.rightEdge)) ||
+      (this.focusVertical && (!this.topEdge || !this.bottomEdge))
+    ) {
+      this.CalculateMergeAllButtonProps();
+      this.merge_all_button?.PreRender(ctx);
+    }
+  }
+
   Render(ctx: p5): void {
-    ctx.stroke(0, 255, 0, 255);
-    ctx.strokeWeight(this.radius * 2);
-    ctx.point(this.point.x, this.point.y);
+    if (
+      (this.focusHorizontal && (!this.leftEdge || !this.rightEdge)) ||
+      (this.focusVertical && (!this.topEdge || !this.bottomEdge))
+    )
+      this.merge_all_button?.Render(ctx);
   }
 }

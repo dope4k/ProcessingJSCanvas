@@ -20,7 +20,7 @@ export default class Button
 
   id: number;
 
-  shape?: 'ARROW' | 'PLUS';
+  shape?: 'ARROW' | 'PLUS' | 'CROSS' | 'SYNC';
 
   position: Vector;
   size: number = 0;
@@ -31,6 +31,7 @@ export default class Button
 
   direction: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 
+  bbox: number[] = [];
   collider: Collider;
 
   hover: boolean = false;
@@ -38,7 +39,7 @@ export default class Button
   OnPress?: () => void;
 
   constructor(
-    shape: 'ARROW' | 'PLUS',
+    shape: 'ARROW' | 'PLUS' | 'CROSS' | 'SYNC',
     x: number,
     y: number,
     size: number = 10,
@@ -55,8 +56,6 @@ export default class Button
     this.collider = new Collider(this);
   }
 
-  OnContextInit(ctx: Context): void {}
-
   RecalculateProps() {
     if (this.shape === 'ARROW') {
       if (this.direction === 'UP' || this.direction === 'DOWN') {
@@ -70,23 +69,42 @@ export default class Button
     } else if (this.shape === 'PLUS') {
       this.width = this.height = this.size;
       this.radius = this.size * 0.75;
+    } else if (this.shape === 'CROSS') {
+      this.width = this.height = this.size;
+      this.radius = this.size * 0.75;
+    } else if (this.shape === 'SYNC') {
+      if (this.direction === 'UP' || this.direction === 'DOWN') {
+        this.width = this.size / 3;
+        this.height = this.size;
+      } else if (this.direction === 'LEFT' || this.direction === 'RIGHT') {
+        this.width = this.size;
+        this.height = this.size / 3;
+      }
+      this.radius = Math.max(this.width, this.height) * 0.75;
     }
   }
 
-  Bbox(): number[] {
-    return [
-      this.position.x,
-      this.position.y,
-      this.position.x + this.width,
-      this.position.y + this.height,
-    ];
+  CalculateBBOX() {
+    if (this.bbox.length !== 0) {
+      this.bbox[0] = this.position.x;
+      this.bbox[1] = this.position.y;
+      this.bbox[2] = this.position.x + this.width;
+      this.bbox[3] = this.position.y + this.height;
+    } else {
+      this.bbox = [
+        this.position.x,
+        this.position.y,
+        this.position.x + this.width,
+        this.position.y + this.height,
+      ];
+    }
   }
 
   OnMouseButton(
     position: Vector,
     button: string,
     state: 'PRESSED' | 'RELEASED' | 'CLICKED'
-  ): boolean | null {
+  ): boolean {
     if (button === 'left' && state === 'PRESSED') {
       if (
         this.OnPress &&
@@ -96,7 +114,7 @@ export default class Button
         return false;
       }
     }
-    return null;
+    return true;
   }
 
   OnMouseMove(position: p5.Vector, button?: string | undefined): void {
@@ -114,18 +132,14 @@ export default class Button
     }
   }
 
-  OnTouch(
-    touches: Touch[],
-    state: 'STARTED' | 'MOVED' | 'ENDED'
-  ): boolean | null {
+  OnTouch(touches: Touch[], state: 'STARTED' | 'MOVED' | 'ENDED'): boolean {
     if (touches.length === 1) {
       const touchPosition = new Vector(touches[0].x, touches[0].y);
       if (state === 'STARTED') {
         return this.OnMouseButton(touchPosition, 'left', 'PRESSED');
       }
     }
-
-    return null;
+    return true;
   }
 
   private getUpArrowPoints(arrowSize: number): number[][] {
@@ -172,6 +186,10 @@ export default class Button
     ];
   }
 
+  PreRender(ctx: p5): void {
+    this.CalculateBBOX();
+  }
+
   RenderArrow(ctx: p5): void {
     const arrowSize = 2;
     if (this.hover) ctx.fill(0, 0, 0, 64);
@@ -186,17 +204,17 @@ export default class Button
       let [xOffset, yOffset] = [0, 0];
       let arrowPoints: number[][] = [];
       if (this.direction === 'UP') {
-        [xOffset, yOffset] = [0, -this.height / 2];
+        yOffset = -this.height / 2;
         arrowPoints = this.getUpArrowPoints(arrowSize);
       } else if (this.direction === 'DOWN') {
-        [xOffset, yOffset] = [0, this.height / 2];
+        yOffset = this.height / 2;
         arrowPoints = this.getDownArrowPoints(arrowSize);
       } else if (this.direction === 'LEFT') {
+        xOffset = -this.width / 2;
         arrowPoints = this.getLeftArrowPoints(arrowSize);
-        [xOffset, yOffset] = [-this.width / 2, 0];
       } else if (this.direction === 'RIGHT') {
+        xOffset = this.width / 2;
         arrowPoints = this.getRightArrowPoints(arrowSize);
-        [xOffset, yOffset] = [this.width / 2, 0];
       }
       for (const point of arrowPoints) {
         ctx.vertex(point[0] - xOffset, point[1] - yOffset);
@@ -204,6 +222,7 @@ export default class Button
     }
     ctx.endShape();
   }
+
   RenderPlus(ctx: p5): void {
     if (this.hover) ctx.fill(0, 0, 0, 64);
     else ctx.fill(255, 255, 255, 255);
@@ -221,12 +240,118 @@ export default class Button
     }
     ctx.endShape();
   }
+
+  RenderCross(ctx: p5): void {
+    if (this.hover) {
+      ctx.fill(255, 0, 0, 255);
+      ctx.stroke(0, 0, 0, 255);
+    } else {
+      ctx.stroke(255, 0, 0, 255);
+      ctx.fill(255, 255, 255, 255);
+    }
+    ctx.strokeWeight(1);
+    ctx.beginShape(1);
+
+    ctx.circle(this.position.x, this.position.y, this.radius * 2);
+    {
+      ctx
+        .vertex(
+          this.position.x - this.width / 3,
+          this.position.y - this.height / 3
+        )
+        .vertex(
+          this.position.x + this.width / 3,
+          this.position.y + this.height / 3
+        )
+        .vertex(
+          this.position.x + this.width / 3,
+          this.position.y - this.height / 3
+        )
+        .vertex(
+          this.position.x - this.width / 3,
+          this.position.y + this.height / 3
+        );
+    }
+    ctx.endShape();
+  }
+
+  RenderSync(ctx: p5): void {
+    const arrowSize = 2;
+    if (this.hover) {
+      ctx.fill(0, 255, 64, 255);
+      ctx.stroke(0, 0, 0, 255);
+    } else {
+      ctx.fill(255, 255, 255, 255);
+      ctx.stroke(0, 255, 0, 255);
+    }
+    ctx.strokeWeight(1);
+
+    ctx.square(
+      this.position.x - this.radius * 1.05,
+      this.position.y - this.radius * 1.05,
+      this.radius * 2.1
+    );
+
+    ctx.beginShape(1);
+    {
+      let [xOffset, yOffset] = [0, 0];
+      let [distX, distY] = [0, 0];
+      let arrowPoints: number[][] = [];
+      if (this.direction === 'UP' || this.direction === 'DOWN') {
+        yOffset = -this.height / 2;
+        distX = 1.5;
+        arrowPoints = this.getUpArrowPoints(arrowSize);
+      } else if (this.direction === 'LEFT' || this.direction === 'RIGHT') {
+        xOffset = -this.width / 2;
+        distY = 1.5;
+        arrowPoints = this.getLeftArrowPoints(arrowSize);
+      }
+      ctx
+        .vertex(
+          arrowPoints[0][0] - xOffset - distX,
+          arrowPoints[0][1] - yOffset - distY
+        )
+        .vertex(
+          arrowPoints[1][0] - xOffset - distX,
+          arrowPoints[1][1] - yOffset - distY
+        )
+        .vertex(
+          arrowPoints[2][0] - xOffset - distX,
+          arrowPoints[2][1] - yOffset - distY
+        )
+        .vertex(
+          arrowPoints[3][0] - xOffset - distX,
+          arrowPoints[3][1] - yOffset - distY
+        )
+        .vertex(
+          arrowPoints[0][0] - xOffset + distX,
+          arrowPoints[0][1] - yOffset + distY
+        )
+        .vertex(
+          arrowPoints[1][0] - xOffset + distX,
+          arrowPoints[1][1] - yOffset + distY
+        )
+        .vertex(
+          arrowPoints[0][0] - xOffset + distX,
+          arrowPoints[0][1] - yOffset + distY
+        )
+        .vertex(
+          arrowPoints[5][0] - xOffset + distX,
+          arrowPoints[5][1] - yOffset + distY
+        );
+    }
+    ctx.endShape();
+  }
+
   Render(ctx: p5): void {
     if (this.shape === 'ARROW') {
       this.RenderArrow(ctx);
-    }
-    if (this.shape === 'PLUS') {
+    } else if (this.shape === 'PLUS') {
       this.RenderPlus(ctx);
+    } else if (this.shape === 'CROSS') {
+      this.RenderCross(ctx);
+    } else if (this.shape === 'SYNC') {
+      this.RenderSync(ctx);
     }
   }
 }

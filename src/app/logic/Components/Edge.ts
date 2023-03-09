@@ -37,13 +37,15 @@ export default class Edge
 
   extend_button?: Button;
   add_button?: Button;
+  delete_button?: Button;
 
   isClickHold: boolean = false;
   selected: boolean = false;
   selectPositionN?: number;
 
   disabled: boolean = false;
-  isHover: boolean = false;
+
+  bbox: number[] = [];
 
   private __isVertical: boolean;
   private __isHorizontal: boolean;
@@ -87,6 +89,27 @@ export default class Edge
     return new Vector((this.x2 + this.x1) / 2, (this.y2 + this.y1) / 2);
   }
 
+  get selectedCell() {
+    if (this.start.selectedCell) return true;
+    else if (this.isVertical && this.start.leftEdge?.start.selectedCell)
+      return true;
+    else if (this.isHorizontal && this.start.topEdge?.start.selectedCell)
+      return true;
+    return false;
+  }
+
+  get focusHorizontal() {
+    return (
+      this.isHorizontal &&
+      (this.start.focusHorizontal || this.end.focusHorizontal)
+    );
+  }
+  get focusVertical() {
+    return (
+      this.isVertical && (this.start.focusVertical || this.end.focusVertical)
+    );
+  }
+
   constructor(
     table: Table,
     nodeA: Node,
@@ -121,7 +144,9 @@ export default class Edge
   OnContextInit(ctx: Context): void {
     if (this.BoundaryEdge()) {
       this.InitExtendButton();
-      this.InitAddButtonPosition();
+      this.InitAddButton();
+    } else {
+      this.InitDeleteButton();
     }
     Renderer.Render();
   }
@@ -158,23 +183,11 @@ export default class Edge
       };
   }
 
-  InitAddButtonPosition() {
+  InitAddButton() {
     const center = this.center;
-    if (this.isHorizontal) {
-      this.add_button = new Button(
-        'PLUS',
-        center.x,
-        center.y + (this.start.topEdge ? -10 : 10),
-        8
-      );
-    } else if (this.isVertical) {
-      this.add_button = new Button(
-        'PLUS',
-        center.x + (this.start.leftEdge ? -10 : 10),
-        center.y,
-        8
-      );
-    }
+    if (this.isVertical) center.x += this.start.leftEdge ? -10 : 10;
+    else if (this.isHorizontal) center.y += this.start.topEdge ? -10 : 10;
+    this.add_button = new Button('PLUS', center.x, center.y, 8);
     if (this.add_button) {
       this.add_button.OnPress = () => {
         if (this.selectPositionN) this.RecursiveSplit(this.selectPositionN);
@@ -182,84 +195,126 @@ export default class Edge
     }
   }
 
+  InitDeleteButton() {
+    const center = this.center;
+    this.delete_button = new Button(
+      'CROSS',
+      center.x,
+      center.y,
+      8,
+      this.isVertical ? 'UP' : 'LEFT'
+    );
+    if (this.delete_button) {
+      this.delete_button.OnPress = () => {
+        if (this.delete_button?.shape === 'SYNC') {
+          this.Disable(false);
+        } else if (this.delete_button?.shape === 'CROSS') {
+          this.Disable(true);
+          this.start.Dissolve();
+        }
+      };
+    }
+  }
+
   CalculateAddButtonProps() {
-    if (this.BoundaryEdge()) {
-      if (this.add_button) {
-        let position = this.center;
-        if (this.selectPositionN) {
-          position = Vector.lerp(
-            this.start.point,
-            this.end.point,
-            this.selectPositionN
-          );
-        }
-        if (this.isVertical) {
-          this.add_button.position = new Vector(
-            position.x + (this.start.leftEdge ? -10 : 10),
-            position.y
-          );
-        } else if (this.isHorizontal) {
-          this.add_button.position = new Vector(
-            position.x,
-            position.y + (this.start.topEdge ? -10 : 10)
-          );
-        }
-      } else {
-        this.InitExtendButton();
+    if (this.add_button && this.selectPositionN !== undefined) {
+      let position = Vector.lerp(
+        this.start.point,
+        this.end.point,
+        this.selectPositionN
+      );
+      if (this.isVertical) position.x += this.start.leftEdge ? -10 : 10;
+      else if (this.isHorizontal) position.y += this.start.topEdge ? -10 : 10;
+      this.add_button.position = position;
+    } else {
+      this.InitExtendButton();
+    }
+  }
+
+  CalculateDeleteButtonProps() {
+    if (this.delete_button) {
+      this.delete_button.position = this.center;
+      if (this.disabled && this.delete_button.shape != 'SYNC') {
+        this.delete_button.shape = 'SYNC';
+        this.delete_button.RecalculateProps();
+      } else if (!this.disabled && this.delete_button.shape != 'CROSS') {
+        this.delete_button.shape = 'CROSS';
+        this.delete_button.RecalculateProps();
       }
     } else {
-      this.extend_button = undefined;
+      this.InitDeleteButton();
     }
   }
 
   CalculateExtendButtonProps() {
-    if (this.BoundaryEdge()) {
-      if (this.extend_button) {
-        const center = this.center;
-        if (this.isVertical) {
-          this.extend_button.position = new Vector(
-            center.x + (this.start.leftEdge ? 10 : -10),
-            center.y
-          );
-          const dir = this.start.leftEdge ? 'RIGHT' : 'LEFT';
-          if (this.extend_button.direction != dir) {
-            this.extend_button.direction = dir;
-            this.extend_button.RecalculateProps();
-          }
-        } else if (this.isHorizontal) {
-          this.extend_button.position = new Vector(
-            center.x,
-            center.y + (this.start.topEdge ? 10 : -10)
-          );
-          const dir = this.start.topEdge ? 'DOWN' : 'UP';
-          if (this.extend_button.direction != dir) {
-            this.extend_button.direction = dir;
-            this.extend_button.RecalculateProps();
-          }
-        }
-      } else {
-        this.InitExtendButton();
+    if (this.extend_button) {
+      const center = this.center;
+      if (this.isVertical) {
+        this.extend_button.position = new Vector(
+          center.x + (this.start.leftEdge ? 10 : -10),
+          center.y
+        );
+      } else if (this.isHorizontal) {
+        this.extend_button.position = new Vector(
+          center.x,
+          center.y + (this.start.topEdge ? 10 : -10)
+        );
       }
     } else {
-      this.extend_button = undefined;
+      this.InitExtendButton();
     }
   }
 
-  Bbox(): number[] {
+  CalculateBBOX() {
+    const extraDisabledWidth = 4;
     if (this.isVertical) {
-      return [
-        this.start.x - this.edgeWidth,
-        this.start.y,
-        this.end.x + this.edgeWidth,
-        this.end.y,
-      ];
+      if (this.bbox.length === 4) {
+        this.bbox[0] =
+          this.start.x -
+          this.edgeWidth -
+          (this.disabled ? extraDisabledWidth : 0);
+        this.bbox[1] = this.start.y;
+        this.bbox[2] =
+          this.end.x +
+          this.edgeWidth +
+          (this.disabled ? extraDisabledWidth : 0);
+        this.bbox[3] = this.end.y;
+      } else {
+        this.bbox = [
+          this.start.x -
+            this.edgeWidth -
+            (this.disabled ? extraDisabledWidth : 0),
+          this.start.y,
+          this.end.x +
+            this.edgeWidth +
+            (this.disabled ? extraDisabledWidth : 0),
+          this.end.y,
+        ];
+      }
     } else {
-      return [
-        this.start.x,
-        this.start.y - this.edgeWidth,
-        this.end.x,
-        this.end.y + this.edgeWidth,
-      ];
+      if (this.bbox.length !== 0) {
+        this.bbox[0] = this.start.x;
+        this.bbox[1] =
+          this.start.y -
+          this.edgeWidth -
+          (this.disabled ? extraDisabledWidth : 0);
+        this.bbox[2] = this.end.x;
+        this.bbox[3] =
+          this.end.y +
+          this.edgeWidth +
+          (this.disabled ? extraDisabledWidth : 0);
+      } else {
+        this.bbox = [
+          this.start.x,
+          this.start.y -
+            this.edgeWidth +
+            (this.disabled ? extraDisabledWidth : 0),
+          this.end.x,
+          this.end.y +
+            this.edgeWidth +
+            (this.disabled ? extraDisabledWidth : 0),
+        ];
+      }
     }
   }
 
@@ -335,9 +390,15 @@ export default class Edge
   Select(select: boolean = true, select_position?: Vector) {
     this.selected = select;
     if (select_position) {
-      this.selectPositionN =
-        Vector.dist(this.start.point, select_position) /
-        Vector.dist(this.start.point, this.end.point);
+      if (this.isHorizontal) {
+        this.selectPositionN =
+          (this.start.point.x - select_position.x) /
+          (this.start.point.x - this.end.point.x);
+      } else if (this.isVertical) {
+        this.selectPositionN =
+          (this.start.point.y - select_position.y) /
+          (this.start.point.y - this.end.point.y);
+      }
     } else {
       this.selectPositionN = undefined;
     }
@@ -628,6 +689,7 @@ export default class Edge
         }
       }
       for (const edge of newEdges) Context.context?.AddObject(edge);
+      this.table.CalculateExtents();
     }
   }
 
@@ -635,11 +697,13 @@ export default class Edge
     position: Vector,
     button: string,
     state: 'PRESSED' | 'RELEASED' | 'CLICKED'
-  ): boolean | null {
+  ): boolean {
     if (this.selected) {
       this.extend_button?.OnMouseButton(position, button, state);
       this.add_button?.OnMouseButton(position, button, state);
     }
+    if (this.focusHorizontal || this.focusVertical)
+      this.delete_button?.OnMouseButton(position, button, state);
     if (button === 'center' && state === 'RELEASED') {
       if (this.collider.PointCollision(position)) {
         if (this.disabled) {
@@ -674,7 +738,7 @@ export default class Edge
       Context.context?.canvas?.style('cursor', 'default');
       Renderer.Render();
     }
-    return null;
+    return true;
   }
 
   OnMouseMove(position: Vector, button?: string | undefined): void {
@@ -682,6 +746,8 @@ export default class Edge
       this.extend_button?.OnMouseMove(position, button);
       this.add_button?.OnMouseMove(position, button);
     }
+    if (this.focusHorizontal || this.focusVertical)
+      this.delete_button?.OnMouseMove(position, button);
     if (this.isClickHold) {
       this.Move(position);
     }
@@ -696,15 +762,14 @@ export default class Edge
     }
   }
 
-  OnTouch(
-    touches: Touch[],
-    state: 'STARTED' | 'MOVED' | 'ENDED'
-  ): boolean | null {
+  OnTouch(touches: Touch[], state: 'STARTED' | 'MOVED' | 'ENDED'): boolean {
     if (touches.length === 1) {
       if (this.selected) {
         this.extend_button?.OnTouch(touches, state);
         this.add_button?.OnTouch(touches, state);
       }
+      if (this.focusHorizontal || this.focusVertical)
+        this.delete_button?.OnTouch(touches, state);
       const touchPosition = new Vector(touches[0].x, touches[0].y);
       if (state === 'STARTED') {
         return this.OnMouseButton(touchPosition, 'left', 'PRESSED');
@@ -715,40 +780,61 @@ export default class Edge
     if (state === 'ENDED') {
       this.OnMouseButton(new Vector(), 'left', 'RELEASED');
     }
-    return null;
+    return true;
   }
 
   PreRender(ctx: p5): void {
-    this.CalculateExtendButtonProps();
-    this.CalculateAddButtonProps();
+    this.CalculateBBOX();
+    if (this.BoundaryEdge()) {
+      if (this.selected) {
+        this.CalculateExtendButtonProps();
+        this.CalculateAddButtonProps();
+        this.extend_button?.PreRender(ctx);
+        this.add_button?.PreRender(ctx);
+      }
+      this.delete_button = undefined;
+    } else {
+      this.extend_button = undefined;
+      this.add_button = undefined;
+      if (this.focusHorizontal || this.focusVertical) {
+        this.CalculateDeleteButtonProps();
+        this.delete_button?.PreRender(ctx);
+      }
+    }
   }
 
   Render(ctx: p5): void {
     if (this.disabled) {
-      if (this.start.InFocusNode() || this.end.InFocusNode()) {
-        if (this.isClickHold || this.selected) ctx.stroke(64, 64, 64, 255);
+      if (this.focusHorizontal || this.focusVertical) {
+        if (this.selected) ctx.stroke(64, 64, 64, 255);
         else ctx.stroke(128, 128, 128, 255);
         ctx.strokeWeight(1);
         ctx.drawingContext.setLineDash([5, 5]);
         ctx.line(this.start.x, this.start.y, this.end.x, this.end.y);
         ctx.drawingContext.setLineDash([0, 0]);
+        this.delete_button?.Render(ctx);
       }
-      return;
+    } else {
+      if (this.selected)
+        ctx.stroke(
+          this.highlightColor[0],
+          this.highlightColor[1],
+          this.highlightColor[2],
+          this.highlightColor[3]
+        );
+      else if (this.selectedCell) {
+        ctx.stroke(0, 0, 255, 255);
+      } else
+        ctx.stroke(this.color[0], this.color[1], this.color[2], this.color[3]);
+      ctx.strokeWeight(this.edgeWidth);
+      ctx.line(this.start.x, this.start.y, this.end.x, this.end.y);
     }
-    if (this.isClickHold || this.selected) {
+
+    if (this.selected) {
       this.extend_button?.Render(ctx);
       this.add_button?.Render(ctx);
-      ctx.stroke(
-        this.highlightColor[0],
-        this.highlightColor[1],
-        this.highlightColor[2],
-        this.highlightColor[3]
-      );
-    } else
-      ctx.stroke(this.color[0], this.color[1], this.color[2], this.color[3]);
-    ctx.strokeWeight(this.edgeWidth);
-    ctx.line(this.start.x, this.start.y, this.end.x, this.end.y);
-
+      if (!this.disabled) this.delete_button?.Render(ctx);
+    }
     if (false) {
       ctx.strokeWeight(1);
       ctx.text(

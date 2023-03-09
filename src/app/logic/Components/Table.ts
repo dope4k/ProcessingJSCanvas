@@ -2,11 +2,14 @@ import * as p5 from 'p5';
 import { Vector } from 'p5';
 import Collider, { Collidable } from '../Base/Collider';
 import Context, { ContextObject } from '../Base/Context';
+import OnKey from '../Base/Events/OnKey';
 import OnMouseButton from '../Base/Events/OnMouseButton';
 import OnMouseMove from '../Base/Events/OnMouseMove';
 import OnMouseWheel from '../Base/Events/OnMouseWheel';
+import OnSelection from '../Base/Events/OnSelection';
 import OnTouch, { Touch } from '../Base/Events/OnTouch';
 import Renderer, { Renderable } from '../Base/Renderer';
+import SelectionTool from '../Tools/SelectionTool';
 import Edge from './Edge';
 import Node from './Node';
 
@@ -17,6 +20,8 @@ export default class Table
     OnMouseMove,
     OnMouseWheel,
     OnTouch,
+    OnKey,
+    OnSelection,
     Collidable,
     Renderable
 {
@@ -28,6 +33,8 @@ export default class Table
   nodes: Node[];
 
   extents?: Node[];
+
+  bbox: number[] = [];
   collider: Collider;
 
   dragExtentIndex?: number;
@@ -46,6 +53,9 @@ export default class Table
   OnContextInit(ctx: Context): void {
     for (const edge of this.edges) {
       ctx.AddObject(edge);
+    }
+    for (const node of this.nodes) {
+      if (node.OnContextInit) node.OnContextInit(ctx);
     }
     this.CalculateExtents();
     Renderer.Render();
@@ -72,14 +82,22 @@ export default class Table
     return this.edges.find((e) => e.Equal(edge));
   }
 
-  Bbox(): number[] {
-    this.CalculateExtents();
-    return [
-      this.extents![0].x - 10,
-      this.extents![0].y - 10,
-      this.extents![3].x + 10,
-      this.extents![3].y + 10,
-    ];
+  CalculateBbox(): void {
+    if (this.extents) {
+      if (this.bbox.length !== 0) {
+        this.bbox[0] = this.extents[0].x - 20;
+        this.bbox[1] = this.extents[0].y - 20;
+        this.bbox[2] = this.extents[3].x + 20;
+        this.bbox[3] = this.extents[3].y + 20;
+      } else {
+        this.bbox = [
+          this.extents[0].x - 20,
+          this.extents[0].y - 20,
+          this.extents[3].x + 20,
+          this.extents[3].y + 20,
+        ];
+      }
+    }
   }
 
   AddNode(node: Node) {
@@ -161,7 +179,6 @@ export default class Table
   }
 
   Scale(x: number, y: number, originX: number, originY: number) {
-    this.CalculateExtents();
     if (this.extents) {
       const [topLeftX, topLeftY] = [this.extents[0].x, this.extents[0].y];
       for (const node of this.nodes) {
@@ -184,6 +201,60 @@ export default class Table
     this.focus = focus;
   }
 
+  SelectCells(selectionTool: SelectionTool) {
+    for (const node of this.nodes) {
+      if (node.bottomEdge?.end.rightEdge) {
+        if (
+          selectionTool.InSelection(
+            node.point,
+            node.bottomEdge.end.rightEdge.end.point
+          )
+        ) {
+          if (node.selectionID != selectionTool.selectionID) {
+            node.previousSelectionState = node.selectedCell;
+            node.selectedCell = !node.selectedCell;
+            node.selectionID = selectionTool.selectionID;
+          }
+        } else {
+          if (
+            node.selectionID == selectionTool.selectionID &&
+            node.selectedCell != node.previousSelectionState
+          ) {
+            node.selectionID = -1;
+            node.selectedCell = node.previousSelectionState;
+          }
+        }
+      }
+    }
+  }
+
+  UnselectCells() {
+    for (const node of this.nodes) {
+      node.selectedCell = false;
+      node.selectionID = -1;
+    }
+  }
+
+  MergeSelection() {
+    for (const node of this.nodes) {
+      node.MergeCells();
+    }
+  }
+
+  UnMergeSelection() {
+    for (const node of this.nodes) {
+      node.UnMergeCells();
+    }
+  }
+
+  OnSelection(selectionTool?: SelectionTool): void {
+    if (selectionTool) {
+      this.SelectCells(selectionTool);
+    } else {
+      this.UnselectCells();
+    }
+  }
+
   OnMouseWheel(position: Vector, scroll: number): void {
     if (this.collider.PointCollision(position))
       this.Scale(-scroll * 0.1, -scroll * 0.1, position.x, position.y);
@@ -193,34 +264,39 @@ export default class Table
     position: p5.Vector,
     button: string,
     state: 'PRESSED' | 'RELEASED' | 'CLICKED'
-  ): boolean | null {
+  ): boolean {
+    for (const node of this.nodes) {
+      if (!node.OnMouseButton(position, button, state)) return false;
+    }
     if (button === 'left' && state === 'PRESSED' && this.extents) {
-      if (!this.collider.PointCollision(position)) this.focus = false;
-      let i = 0;
-      for (const extentPoint of this.extents) {
-        let [offsetX, offsetY] = this.GetExtentOffset(i);
-        if (
-          Collider.PointCollision(position, [
-            extentPoint.x - extentPoint.radius + offsetX,
-            extentPoint.y - extentPoint.radius + offsetY,
-            extentPoint.x + extentPoint.radius + offsetX,
-            extentPoint.y + extentPoint.radius + offsetY,
-          ])
-        ) {
-          this.focus = true;
-          this.dragExtentIndex = i;
-          return false;
+      if (this.collider.PointCollision(position)) {
+        let i = 0;
+        for (const extentPoint of this.extents) {
+          let [offsetX, offsetY] = this.GetExtentOffset(i);
+          if (
+            Collider.PointCollision(position, [
+              extentPoint.x - extentPoint.radius + offsetX,
+              extentPoint.y - extentPoint.radius + offsetY,
+              extentPoint.x + extentPoint.radius + offsetX,
+              extentPoint.y + extentPoint.radius + offsetY,
+            ])
+          ) {
+            this.focus = true;
+            this.dragExtentIndex = i;
+            return false;
+          }
+          ++i;
         }
-        ++i;
-      }
+      } else this.focus = false;
     }
     if (state === 'RELEASED') {
       this.dragExtentIndex = undefined;
     }
-    return null;
+    return true;
   }
 
   OnMouseMove(position: p5.Vector, button?: string | undefined): void {
+    for (const node of this.nodes) node.OnMouseMove(position, button);
     if (this.extents && this.dragExtentIndex != undefined) {
       const point = this.extents[this.dragExtentIndex];
       const otherPoint = this.extents[3 - this.dragExtentIndex];
@@ -280,11 +356,9 @@ export default class Table
     }
   }
 
-  OnTouch(
-    touches: Touch[],
-    state: 'STARTED' | 'MOVED' | 'ENDED'
-  ): boolean | null {
+  OnTouch(touches: Touch[], state: 'STARTED' | 'MOVED' | 'ENDED'): boolean {
     if (touches.length === 1) {
+      for (const node of this.nodes) node.OnTouch(touches, state);
       const touchPosition = new Vector(touches[0].x, touches[0].y);
       if (state === 'STARTED') {
         return this.OnMouseButton(touchPosition, 'left', 'PRESSED');
@@ -314,14 +388,27 @@ export default class Table
     } else if (state === 'ENDED') {
       this.OnMouseButton(new Vector(), 'left', 'RELEASED');
     }
-    return null;
+    return true;
+  }
+
+  OnKey(button: string, state: 'PRESSED' | 'RELEASED' | 'TYPED'): void {
+    if (button === 'm' && state === 'PRESSED') {
+      this.MergeSelection();
+      Renderer.Render();
+    } else if (button === 'u' && state === 'PRESSED') {
+      this.UnMergeSelection();
+      Renderer.Render();
+    }
+  }
+
+  PreRender(ctx: p5): void {
+    this.CalculateBbox();
+    for (const node of this.nodes) node.PreRender(ctx);
   }
 
   Render(ctx: p5): void {
     {
       //Draw Transform box for Table
-      this.CalculateExtents();
-
       if (this.extents && this.focus) {
         ctx.fill(0, 0, 0, 0);
         ctx.stroke(128, 128, 128, 255);
@@ -340,5 +427,6 @@ export default class Table
         }
       }
     }
+    for (const node of this.nodes) node.Render(ctx);
   }
 }

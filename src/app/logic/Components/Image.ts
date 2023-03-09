@@ -26,6 +26,7 @@ export default class Image implements ContextObject, Renderable {
       Renderer.Render();
     });
   }
+
   Render(ctx: p5): void {
     if (this.loaded && this.__image) {
       const factor =

@@ -5,5 +5,5 @@ export default interface OnMouseButton {
     position: Vector,
     button: string,
     state: 'PRESSED' | 'RELEASED' | 'CLICKED'
-  ): boolean | null;
+  ): boolean;
 }

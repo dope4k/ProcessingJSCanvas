@@ -5,12 +5,13 @@ import OnKey from './Events/OnKey';
 import OnMouseButton from './Events/OnMouseButton';
 import OnMouseMove from './Events/OnMouseMove';
 import OnMouseWheel from './Events/OnMouseWheel';
+import OnSelection from './Events/OnSelection';
 import OnTouch, { Touch } from './Events/OnTouch';
 import Renderer, { Renderable } from './Renderer';
 
 export interface ContextObject {
   id: number;
-  OnContextInit(ctx: Context): void;
+  OnContextInit?(ctx: Context): void;
 }
 
 export default class Context {
@@ -47,6 +48,8 @@ export default class Context {
   OnKeyDispatchers: OnKey[] = [];
 
   selectionTool: SelectionTool;
+  OnSelectionDispatchers: OnSelection[] = [];
+  selectionMode: boolean = false;
 
   constructor(width: number, height: number, element_id?: string) {
     Context.__context = this;
@@ -131,6 +134,9 @@ export default class Context {
   BindOnKey(obj: OnKey) {
     this.OnKeyDispatchers.push(obj);
   }
+  BindOnSelection(obj: OnSelection) {
+    this.OnSelectionDispatchers.push(obj);
+  }
 
   AddObject(obj: ContextObject) {
     if ('OnMouseMove' in obj) this.BindOnMouseMove(obj as OnMouseMove);
@@ -138,9 +144,10 @@ export default class Context {
     if ('OnMouseButton' in obj) this.BindOnMouseButton(obj as OnMouseButton);
     if ('OnTouch' in obj) this.BindOnTouch(obj as OnTouch);
     if ('OnKey' in obj) this.BindOnKey(obj as OnKey);
+    if ('OnSelection' in obj) this.BindOnSelection(obj as OnSelection);
     if ('Render' in obj)
       this.__renderer?.AddRenderObject(obj as any as Renderable);
-    obj.OnContextInit(this);
+    if (obj.OnContextInit) obj.OnContextInit(this);
   }
   RemoveObject(id?: number) {
     if (!id) return;
@@ -172,54 +179,56 @@ export default class Context {
     button: string,
     state: 'PRESSED' | 'RELEASED' | 'CLICKED'
   ) {
-    let check = true;
-    const length = this.OnMouseButtonDispatchers.length;
-    for (
-      let i = 0;
-      i < length && i < this.OnMouseButtonDispatchers.length;
-      ++i
-    ) {
-      const ret = this.OnMouseButtonDispatchers[i].OnMouseButton(
-        position,
-        button,
-        state
-      );
-      if (ret !== null) {
-        check = false;
-        if (ret === false) break;
+    if (!this.selectionMode) {
+      const length = this.OnMouseButtonDispatchers.length;
+      for (
+        let i = 0;
+        i < length && i < this.OnMouseButtonDispatchers.length;
+        ++i
+      ) {
+        if (
+          !this.OnMouseButtonDispatchers[i].OnMouseButton(
+            position,
+            button,
+            state
+          )
+        )
+          break;
       }
-    }
-
-    if (check) {
+    } else {
       this.selectionTool.OnMouseButton(position, button, state);
     }
   }
   OnMouseMove(position: Vector, button?: string) {
-    const length = this.OnMouseMoveDispatchers.length;
-    for (let i = 0; i < length && i < this.OnMouseMoveDispatchers.length; ++i) {
-      this.OnMouseMoveDispatchers[i].OnMouseMove(position, button);
+    if (!this.selectionMode) {
+      const length = this.OnMouseMoveDispatchers.length;
+      for (
+        let i = 0;
+        i < length && i < this.OnMouseMoveDispatchers.length;
+        ++i
+      ) {
+        this.OnMouseMoveDispatchers[i].OnMouseMove(position, button);
+      }
+    } else {
+      this.selectionTool.OnMouseMove(position, button);
     }
-    this.selectionTool.OnMouseMove(position, button);
   }
   OnMouseWheel(position: Vector, scroll: number) {
-    const length = this.OnMouseWheelDispatchers.length;
-    for (
-      let i = 0;
-      i < length && i < this.OnMouseWheelDispatchers.length;
-      ++i
-    ) {
-      this.OnMouseWheelDispatchers[i].OnMouseWheel(position, scroll);
+    if (!this.selectionMode) {
+      const length = this.OnMouseWheelDispatchers.length;
+      for (
+        let i = 0;
+        i < length && i < this.OnMouseWheelDispatchers.length;
+        ++i
+      ) {
+        this.OnMouseWheelDispatchers[i].OnMouseWheel(position, scroll);
+      }
     }
   }
   OnTouch(touches: Touch[], state: 'STARTED' | 'MOVED' | 'ENDED') {
-    let check = true;
     const length = this.OnTouchDispatchers.length;
     for (let i = 0; i < length && i < this.OnTouchDispatchers.length; ++i) {
-      const ret = this.OnTouchDispatchers[i].OnTouch(touches, state);
-      if (ret !== null) {
-        check = false;
-        if (ret === false) break;
-      }
+      if (!this.OnTouchDispatchers[i].OnTouch(touches, state)) break;
     }
   }
   OnKey(button: string, state: 'PRESSED' | 'RELEASED' | 'TYPED') {
@@ -227,9 +236,26 @@ export default class Context {
     for (let i = 0; i < length && i < this.OnKeyDispatchers.length; ++i) {
       this.OnKeyDispatchers[i].OnKey(button, state);
     }
+    if (button === 's' && state === 'PRESSED') {
+      if (this.selectionMode) {
+        this.selectionMode = false;
+        this.OnSelection();
+        Renderer.Render();
+      } else {
+        this.selectionMode = true;
+      }
+    }
+  }
+
+  OnSelection(selectionTool?: SelectionTool) {
+    const length = this.OnSelectionDispatchers.length;
+    for (let i = 0; i < length && i < this.OnSelectionDispatchers.length; ++i) {
+      this.OnSelectionDispatchers[i].OnSelection(selectionTool);
+    }
   }
 
   Render() {
     this.__renderer?.Render(this.ctx);
+    this.selectionTool.Render(this.ctx);
   }
 }

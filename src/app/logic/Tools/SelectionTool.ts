@@ -4,8 +4,7 @@ import Context, { ContextObject } from '../Base/Context';
 import OnMouseButton from '../Base/Events/OnMouseButton';
 import OnMouseMove from '../Base/Events/OnMouseMove';
 import Renderer, { Renderable } from '../Base/Renderer';
-
-export interface Selectable {}
+import Node from '../Components/Node';
 
 export default class SelectionTool
   implements ContextObject, Renderable, OnMouseButton, OnMouseMove
@@ -17,11 +16,48 @@ export default class SelectionTool
   dragStart?: Vector;
   dragEnd?: Vector;
 
+  selectionID: number = 0;
+
   constructor() {
     this.id = Context.id;
   }
 
-  OnContextInit(ctx: Context): void {}
+  InSelection(topLeft: Vector, bottomRight: Vector) {
+    if (this.dragStart && this.dragEnd) {
+      let startPoint: Vector;
+      let endPoint: Vector;
+      if (
+        this.dragStart.x <= this.dragEnd.x &&
+        this.dragStart.y <= this.dragEnd.y
+      ) {
+        startPoint = this.dragStart;
+        endPoint = this.dragEnd;
+      } else if (
+        this.dragStart.x <= this.dragEnd.x &&
+        this.dragStart.y >= this.dragEnd.y
+      ) {
+        startPoint = new Vector(this.dragStart.x, this.dragEnd.y);
+        endPoint = new Vector(this.dragEnd.x, this.dragStart.y);
+      } else if (
+        this.dragStart.x >= this.dragEnd.x &&
+        this.dragStart.y <= this.dragEnd.y
+      ) {
+        startPoint = new Vector(this.dragEnd.x, this.dragStart.y);
+        endPoint = new Vector(this.dragStart.x, this.dragEnd.y);
+      } else {
+        startPoint = this.dragEnd;
+        endPoint = this.dragStart;
+      }
+      return (
+        topLeft.x < endPoint.x &&
+        bottomRight.x > startPoint.x &&
+        topLeft.y < endPoint.y &&
+        bottomRight.y > startPoint.y
+      );
+    }
+    return false;
+  }
+
   OnMouseButton(
     position: p5.Vector,
     button: string,
@@ -31,9 +67,12 @@ export default class SelectionTool
       this.dragStart = position;
       Renderer.Render();
     } else if (state === 'RELEASED') {
-      //TODO: Find all objects selected by tool
+      if (this.dragStart && !this.dragEnd) {
+        Context.context?.OnSelection();
+      }
       this.dragStart = undefined;
       this.dragEnd = undefined;
+      this.selectionID++;
       Renderer.Render();
     }
     return true;
@@ -41,13 +80,15 @@ export default class SelectionTool
   OnMouseMove(position: p5.Vector, button?: string | undefined): void {
     if (this.dragStart) {
       this.dragEnd = position;
+      Context.context?.OnSelection(this);
       Renderer.Render();
     }
   }
   Render(ctx: p5): void {
     if (this.dragStart && this.dragEnd) {
-      ctx.strokeWeight(2);
+      ctx.strokeWeight(1);
       ctx.fill(0, 0, 0, 0);
+      ctx.stroke(0, 0, 0, 255);
       ctx.rect(
         this.dragStart.x,
         this.dragStart.y,
