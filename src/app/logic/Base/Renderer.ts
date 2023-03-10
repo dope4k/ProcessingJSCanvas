@@ -42,7 +42,6 @@ export default class Renderer {
 
   Render(ctx: p5) {
     if (this.dirty) {
-      console.log('RENDERING');
       ctx.background(255, 255, 255, 255);
       if (!Context.context.selectionMode) {
         for (const obj of this.render_objects) {

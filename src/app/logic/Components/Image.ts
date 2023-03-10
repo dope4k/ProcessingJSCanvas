@@ -2,6 +2,7 @@ import * as p5 from 'p5';
 import Context, { ContextObject } from '../Base/Context';
 import Renderer, { Renderable } from '../Base/Renderer';
 import { Image as P5Image } from 'p5';
+
 export default class Image implements ContextObject, Renderable {
   zIndex: number = -1;
 

@@ -69,8 +69,8 @@ export default class SelectionTool
       Renderer.Render();
     } else if (state === 'RELEASED') {
       if (this.dragStart) {
+        this.dragStart = undefined;
         if (this.dragEnd) {
-          this.dragStart = undefined;
           this.dragEnd = undefined;
           this.selectionID++;
           Renderer.Render();

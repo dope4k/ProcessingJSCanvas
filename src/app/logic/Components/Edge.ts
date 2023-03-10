@@ -780,69 +780,69 @@ export default class Edge
   }
 
   Render(ctx: p5): void {
-    if (this.disabled) {
-      if (this.focusHorizontal || this.focusVertical) {
-        if (this.selected) ctx.stroke(64, 64, 64, 255);
-        else ctx.stroke(128, 128, 128, 255);
-        ctx.strokeWeight(1);
+    if (Context.context.selectionMode) {
+      if (
+        this.isHorizontal &&
+        this.start.bottomEdge &&
+        this.selectedCell &&
+        this.start.selectedCell
+      ) {
+        ctx.stroke(0, 0, 0, 0);
+        ctx.fill(128, 32, 64, 64);
+        ctx.strokeWeight(0);
+        ctx.rect(
+          this.start.x,
+          this.start.y,
+          this.length,
+          this.start.bottomEdge.length
+        );
+      }
+      if (this.disabled) {
+        ctx.stroke(128, 128, 128, 255);
         ctx.drawingContext.setLineDash([5, 5]);
+        ctx.strokeWeight(1);
         ctx.line(this.start.x, this.start.y, this.end.x, this.end.y);
         ctx.drawingContext.setLineDash([0, 0]);
-        this.delete_button?.Render(ctx);
-      }
-      if (this.selectedCell) {
-        if (this.start.selectedCell) {
-          ctx.fill(0, 0, 255, 64);
-          ctx.strokeWeight(0);
-          if (this.isHorizontal && this.start.bottomEdge) {
-            ctx.rect(
-              this.start.x,
-              this.start.y,
-              this.length,
-              this.start.bottomEdge.length
-            );
-          }
-        }
+      } else {
+        ctx.stroke(this.color[0], this.color[1], this.color[2], this.color[3]);
+        ctx.strokeWeight(this.edgeWidth);
+        ctx.line(this.start.x, this.start.y, this.end.x, this.end.y);
       }
     } else {
-      if (this.selected)
-        ctx.stroke(
-          this.highlightColor[0],
-          this.highlightColor[1],
-          this.highlightColor[2],
-          this.highlightColor[3]
-        );
-      else if (this.selectedCell) {
-        if (this.start.selectedCell) {
-          ctx.fill(0, 0, 255, 64);
-          ctx.strokeWeight(0);
-          if (this.isHorizontal && this.start.bottomEdge) {
-            ctx.rect(
-              this.start.x,
-              this.start.y,
-              this.length,
-              this.start.bottomEdge.length
-            );
-          }
+      if (this.disabled) {
+        if (this.focusHorizontal || this.focusVertical) {
+          if (this.selected) ctx.stroke(64, 64, 64, 255);
+          else ctx.stroke(128, 128, 128, 255);
+          ctx.strokeWeight(1);
+          ctx.drawingContext.setLineDash([5, 5]);
+          ctx.line(this.start.x, this.start.y, this.end.x, this.end.y);
+          ctx.drawingContext.setLineDash([0, 0]);
+          this.delete_button?.Render(ctx);
         }
-      } else
-        ctx.stroke(this.color[0], this.color[1], this.color[2], this.color[3]);
-      ctx.strokeWeight(this.edgeWidth);
-      ctx.line(this.start.x, this.start.y, this.end.x, this.end.y);
-    }
+      } else {
+        if (this.selected)
+          ctx.stroke(
+            this.highlightColor[0],
+            this.highlightColor[1],
+            this.highlightColor[2],
+            this.highlightColor[3]
+          );
+        else
+          ctx.stroke(
+            this.color[0],
+            this.color[1],
+            this.color[2],
+            this.color[3]
+          );
+        ctx.strokeWeight(this.edgeWidth);
+        ctx.line(this.start.x, this.start.y, this.end.x, this.end.y);
+      }
 
-    if (this.selected) {
-      this.extend_button?.Render(ctx);
-      this.add_button?.Render(ctx);
-      if (!this.disabled) this.delete_button?.Render(ctx);
-    }
-    if (false) {
-      ctx.strokeWeight(1);
-      ctx.text(
-        this.id.toString(),
-        (this.end.x + this.start.x) / 2,
-        (this.end.y + this.start.y) / 2
-      );
+      if (this.selected) {
+        this.extend_button?.Render(ctx);
+        this.add_button?.Render(ctx);
+        if (!this.disabled) this.delete_button?.Render(ctx);
+      }
     }
   }
 }
