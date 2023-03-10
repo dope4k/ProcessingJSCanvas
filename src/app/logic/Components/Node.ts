@@ -31,7 +31,7 @@ export default class Node
   rightEdge?: Edge = undefined;
   leftEdge?: Edge = undefined;
 
-  bbox: number[] = [];
+  bbox: number[] = [0, 0, 0, 0];
   collider: Collider;
 
   merge_all_button?: Button;
@@ -183,20 +183,46 @@ export default class Node
     }
   }
 
-  CalculateBbox() {
-    if (this.bbox.length !== 0) {
-      this.bbox[0] = this.x - this.radius;
-      this.bbox[1] = this.y - this.radius;
-      this.bbox[2] = this.x + this.radius;
-      this.bbox[3] = this.y + this.radius;
-    } else {
-      this.bbox = [
-        this.x - this.radius,
-        this.y - this.radius,
-        this.x + this.radius,
-        this.y + this.radius,
-      ];
+  GetCell(): Node[] | null {
+    let startNode: Node | undefined = this;
+    let endNode: Node | undefined = this.bottomEdge?.end.rightEdge?.end;
+    while (startNode?.rightEdge?.disabled === true) {
+      startNode = startNode?.topEdge?.start;
     }
+    while (startNode?.bottomEdge?.disabled === true) {
+      startNode = startNode?.leftEdge?.start;
+    }
+    while (endNode?.topEdge?.disabled === true) {
+      endNode = endNode?.rightEdge?.end;
+    }
+    while (endNode?.leftEdge?.disabled === true) {
+      endNode = endNode?.bottomEdge?.end;
+    }
+    if (startNode && endNode) return [startNode, endNode];
+    return null;
+  }
+
+  SelectCell(select: boolean = true, selectionID: number) {
+    if (select && this.selectionID !== selectionID) {
+      this.previousSelectionState = this.selectedCell;
+      this.selectedCell = !this.selectedCell;
+      this.selectionID = selectionID;
+    } else if (!select && this.selectionID === selectionID) {
+      this.selectedCell = this.previousSelectionState;
+      this.selectionID = -1;
+    }
+    if (this.bottomEdge?.end.rightEdge?.disabled) {
+      this.bottomEdge.end.SelectCell(select, selectionID);
+    }
+    if (this.rightEdge?.end.bottomEdge?.disabled)
+      this.rightEdge.end.SelectCell(select, selectionID);
+  }
+
+  CalculateBbox() {
+    this.bbox[0] = this.x - this.radius;
+    this.bbox[1] = this.y - this.radius;
+    this.bbox[2] = this.x + this.radius;
+    this.bbox[3] = this.y + this.radius;
   }
 
   AddEdge(edge: Edge) {

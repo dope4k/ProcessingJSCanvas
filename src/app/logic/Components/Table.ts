@@ -34,7 +34,7 @@ export default class Table
 
   extents?: Node[];
 
-  bbox: number[] = [];
+  bbox: number[] = [0, 0, 0, 0];
   collider: Collider;
 
   dragExtentIndex?: number;
@@ -72,7 +72,12 @@ export default class Table
       if (node.x > bottomRight.x || node.y > bottomRight.y) bottomRight = node;
       if (node.x < bottomLeft.x || node.y > bottomLeft.y) bottomLeft = node;
     }
-    this.extents = [topLeft, topRight, bottomLeft, bottomRight];
+    if (this.extents) {
+      this.extents[0] = topLeft;
+      this.extents[1] = topRight;
+      this.extents[2] = bottomLeft;
+      this.extents[3] = bottomRight;
+    } else this.extents = [topLeft, topRight, bottomLeft, bottomRight];
   }
 
   private findNode(node: Node) {
@@ -84,19 +89,10 @@ export default class Table
 
   CalculateBbox(): void {
     if (this.extents) {
-      if (this.bbox.length !== 0) {
-        this.bbox[0] = this.extents[0].x - 20;
-        this.bbox[1] = this.extents[0].y - 20;
-        this.bbox[2] = this.extents[3].x + 20;
-        this.bbox[3] = this.extents[3].y + 20;
-      } else {
-        this.bbox = [
-          this.extents[0].x - 20,
-          this.extents[0].y - 20,
-          this.extents[3].x + 20,
-          this.extents[3].y + 20,
-        ];
-      }
+      this.bbox[0] = this.extents[0].x - 20;
+      this.bbox[1] = this.extents[0].y - 20;
+      this.bbox[2] = this.extents[3].x + 20;
+      this.bbox[3] = this.extents[3].y + 20;
     }
   }
 
@@ -161,21 +157,11 @@ export default class Table
   }
 
   GetExtentOffset(i: number) {
-    let [offsetX, offsetY] = [0, 0];
-    if (i == 0) {
-      offsetX = -10;
-      offsetY = -10;
-    } else if (i == 1) {
-      offsetX = 10;
-      offsetY = -10;
-    } else if (i == 2) {
-      offsetX = -10;
-      offsetY = 10;
-    } else if (i == 3) {
-      offsetX = 10;
-      offsetY = 10;
-    }
-    return [offsetX, offsetY];
+    if (i == 0) return [-10, -10];
+    else if (i == 1) return [10, -10];
+    else if (i == 2) return [-10, 10];
+    else if (i == 3) return [10, 10];
+    return [0, 0];
   }
 
   Scale(x: number, y: number, originX: number, originY: number) {
@@ -204,24 +190,13 @@ export default class Table
   SelectCells(selectionTool: SelectionTool) {
     for (const node of this.nodes) {
       if (node.bottomEdge?.end.rightEdge) {
-        if (
-          selectionTool.InSelection(
-            node.point,
-            node.bottomEdge.end.rightEdge.end.point
-          )
-        ) {
-          if (node.selectionID != selectionTool.selectionID) {
-            node.previousSelectionState = node.selectedCell;
-            node.selectedCell = !node.selectedCell;
-            node.selectionID = selectionTool.selectionID;
-          }
-        } else {
-          if (
-            node.selectionID == selectionTool.selectionID &&
-            node.selectedCell != node.previousSelectionState
-          ) {
-            node.selectionID = -1;
-            node.selectedCell = node.previousSelectionState;
+        const cell = node.GetCell();
+        if (cell) {
+          const [startCell, endCell] = cell;
+          if (selectionTool.InSelection(startCell.point, endCell.point)) {
+            startCell.SelectCell(true, selectionTool.selectionID);
+          } else {
+            startCell.SelectCell(false, selectionTool.selectionID);
           }
         }
       }
@@ -239,15 +214,18 @@ export default class Table
     for (const node of this.nodes) {
       node.MergeCells();
     }
+    this.UnselectCells();
   }
 
   UnMergeSelection() {
     for (const node of this.nodes) {
       node.UnMergeCells();
     }
+    this.UnselectCells();
   }
 
   OnSelection(selectionTool?: SelectionTool): void {
+    this.Focus();
     if (selectionTool) {
       this.SelectCells(selectionTool);
     } else {

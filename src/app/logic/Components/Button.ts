@@ -31,7 +31,7 @@ export default class Button
 
   direction: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 
-  bbox: number[] = [];
+  bbox: number[] = [0, 0, 0, 0];
   collider: Collider;
 
   hover: boolean = false;
@@ -85,19 +85,10 @@ export default class Button
   }
 
   CalculateBBOX() {
-    if (this.bbox.length !== 0) {
-      this.bbox[0] = this.position.x;
-      this.bbox[1] = this.position.y;
-      this.bbox[2] = this.position.x + this.width;
-      this.bbox[3] = this.position.y + this.height;
-    } else {
-      this.bbox = [
-        this.position.x,
-        this.position.y,
-        this.position.x + this.width,
-        this.position.y + this.height,
-      ];
-    }
+    this.bbox[0] = this.position.x;
+    this.bbox[1] = this.position.y;
+    this.bbox[2] = this.position.x + this.width;
+    this.bbox[3] = this.position.y + this.height;
   }
 
   OnMouseButton(
@@ -123,8 +114,10 @@ export default class Button
         this.OnPress &&
         this.collider.PointCollisionCircle(position, this.radius)
       ) {
-        this.hover = true;
-        Renderer.Render();
+        if (!this.hover) {
+          this.hover = true;
+          Renderer.Render();
+        }
       } else if (this.hover) {
         this.hover = false;
         Renderer.Render();

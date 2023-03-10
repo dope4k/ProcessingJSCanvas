@@ -18,15 +18,23 @@ export default class Context {
   static __context?: Context;
   static __id: number = 0;
   static get context() {
-    return Context.__context;
+    return Context.__context!;
   }
+  static get canvas() {
+    return Context.context!.canvas;
+  }
+
   static get id() {
     return Context.__id++;
   }
 
-  private __canvas?: p5.Renderer;
+  private __element?: p5.Renderer;
+  get element() {
+    return this.__element!;
+  }
+
   get canvas() {
-    return this.__canvas;
+    return this.ctx.drawingContext as CanvasRenderingContext2D;
   }
 
   private ctx: p5;
@@ -79,44 +87,77 @@ export default class Context {
   }
 
   private sketch(ctx: p5) {
-    ctx.keyPressed = () => this.OnKey(ctx.key, 'PRESSED');
-    ctx.keyReleased = () => this.OnKey(ctx.key, 'RELEASED');
-    ctx.keyTyped = () => this.OnKey(ctx.key, 'TYPED');
+    ctx.keyPressed = () => {
+      this.OnKey(ctx.key, 'PRESSED');
+      return false;
+    };
+    ctx.keyReleased = () => {
+      this.OnKey(ctx.key, 'RELEASED');
+      return false;
+    };
+    ctx.keyTyped = () => {
+      this.OnKey(ctx.key, 'TYPED');
+      return false;
+    };
 
-    ctx.mouseMoved = () => this.OnMouseMove(new Vector(ctx.mouseX, ctx.mouseY));
-    ctx.mouseDragged = () =>
+    ctx.mouseMoved = () => {
+      this.OnMouseMove(new Vector(ctx.mouseX, ctx.mouseY));
+      return false;
+    };
+    ctx.mouseDragged = () => {
       this.OnMouseMove(new Vector(ctx.mouseX, ctx.mouseY), ctx.mouseButton);
-    ctx.mouseClicked = () =>
+      return false;
+    };
+    ctx.mouseClicked = () => {
       this.OnMouseButton(
         new Vector(ctx.mouseX, ctx.mouseY),
         ctx.mouseButton,
         'CLICKED'
       );
-    ctx.mousePressed = () => {
-      this.OnMouseButton(
-        new Vector(ctx.mouseX, ctx.mouseY),
-        ctx.mouseButton,
-        'PRESSED'
-      );
+      return false;
     };
-    ctx.mouseReleased = () =>
+    ctx.mousePressed = () => {
+      {
+        this.OnMouseButton(
+          new Vector(ctx.mouseX, ctx.mouseY),
+          ctx.mouseButton,
+          'PRESSED'
+        );
+        return false;
+      }
+    };
+    ctx.mouseReleased = () => {
       this.OnMouseButton(
         new Vector(ctx.mouseX, ctx.mouseY),
         ctx.mouseButton,
         'RELEASED'
       );
-    ctx.mouseWheel = (evt: { delta: number }) =>
+      return false;
+    };
+    ctx.mouseWheel = (evt: { delta: number }) => {
       this.OnMouseWheel(new Vector(ctx.mouseX, ctx.mouseY), evt.delta);
-    ctx.touchStarted = () => this.OnTouch(ctx.touches as Touch[], 'STARTED');
-    ctx.touchMoved = () => this.OnTouch(ctx.touches as Touch[], 'MOVED');
-    ctx.touchEnded = () => this.OnTouch(ctx.touches as Touch[], 'ENDED');
+      return false;
+    };
+    ctx.touchStarted = () => {
+      this.OnTouch(ctx.touches as Touch[], 'STARTED');
+      return false;
+    };
+    ctx.touchMoved = () => {
+      this.OnTouch(ctx.touches as Touch[], 'MOVED');
+      return false;
+    };
+    ctx.touchEnded = () => {
+      this.OnTouch(ctx.touches as Touch[], 'ENDED');
+      return false;
+    };
     ctx.draw = () => this.Render();
   }
 
   Setup() {
-    this.__canvas = this.ctx.createCanvas(this.width, this.height);
-    if (this.element_id) this.canvas?.parent(this.element_id);
+    this.__element = this.ctx.createCanvas(this.width, this.height);
+    if (this.element_id) this.element?.parent(this.element_id);
     this.__renderer?.AddRenderObject(this.selectionTool);
+    this.ctx.frameRate(45);
   }
 
   BindOnMouseMove(obj: OnMouseMove) {

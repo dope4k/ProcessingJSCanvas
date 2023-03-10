@@ -45,7 +45,7 @@ export default class Edge
 
   disabled: boolean = false;
 
-  bbox: number[] = [];
+  bbox: number[] = [0, 0, 0, 0];
 
   private __isVertical: boolean;
   private __isHorizontal: boolean;
@@ -250,15 +250,13 @@ export default class Edge
     if (this.extend_button) {
       const center = this.center;
       if (this.isVertical) {
-        this.extend_button.position = new Vector(
-          center.x + (this.start.leftEdge ? 10 : -10),
-          center.y
-        );
+        this.extend_button.position.x =
+          center.x + (this.start.leftEdge ? 10 : -10);
+        this.extend_button.position.y = center.y;
       } else if (this.isHorizontal) {
-        this.extend_button.position = new Vector(
-          center.x,
-          center.y + (this.start.topEdge ? 10 : -10)
-        );
+        this.extend_button.position.x = center.x;
+        this.extend_button.position.y =
+          center.y + (this.start.topEdge ? 10 : -10);
       }
     } else {
       this.InitExtendButton();
@@ -268,53 +266,23 @@ export default class Edge
   CalculateBBOX() {
     const extraDisabledWidth = 4;
     if (this.isVertical) {
-      if (this.bbox.length === 4) {
-        this.bbox[0] =
-          this.start.x -
-          this.edgeWidth -
-          (this.disabled ? extraDisabledWidth : 0);
-        this.bbox[1] = this.start.y;
-        this.bbox[2] =
-          this.end.x +
-          this.edgeWidth +
-          (this.disabled ? extraDisabledWidth : 0);
-        this.bbox[3] = this.end.y;
-      } else {
-        this.bbox = [
-          this.start.x -
-            this.edgeWidth -
-            (this.disabled ? extraDisabledWidth : 0),
-          this.start.y,
-          this.end.x +
-            this.edgeWidth +
-            (this.disabled ? extraDisabledWidth : 0),
-          this.end.y,
-        ];
-      }
+      this.bbox[0] =
+        this.start.x -
+        this.edgeWidth -
+        (this.disabled ? extraDisabledWidth : 0);
+      this.bbox[1] = this.start.y;
+      this.bbox[2] =
+        this.end.x + this.edgeWidth + (this.disabled ? extraDisabledWidth : 0);
+      this.bbox[3] = this.end.y;
     } else {
-      if (this.bbox.length !== 0) {
-        this.bbox[0] = this.start.x;
-        this.bbox[1] =
-          this.start.y -
-          this.edgeWidth -
-          (this.disabled ? extraDisabledWidth : 0);
-        this.bbox[2] = this.end.x;
-        this.bbox[3] =
-          this.end.y +
-          this.edgeWidth +
-          (this.disabled ? extraDisabledWidth : 0);
-      } else {
-        this.bbox = [
-          this.start.x,
-          this.start.y -
-            this.edgeWidth +
-            (this.disabled ? extraDisabledWidth : 0),
-          this.end.x,
-          this.end.y +
-            this.edgeWidth +
-            (this.disabled ? extraDisabledWidth : 0),
-        ];
-      }
+      this.bbox[0] = this.start.x;
+      this.bbox[1] =
+        this.start.y -
+        this.edgeWidth -
+        (this.disabled ? extraDisabledWidth : 0);
+      this.bbox[2] = this.end.x;
+      this.bbox[3] =
+        this.end.y + this.edgeWidth + (this.disabled ? extraDisabledWidth : 0);
     }
   }
 
@@ -427,6 +395,7 @@ export default class Edge
         this.start.leftEdge?.Disable(disable);
         this.start.topEdge?.Disable(disable);
         this.start.bottomEdge?.Disable(disable);
+        this.start.Dissolve();
       } else {
         if (this.isHorizontal) {
           this.start.rightEdge?.Disable(disable);
@@ -720,9 +689,9 @@ export default class Edge
     } else if (button === 'left' && state === 'PRESSED') {
       if (this.collider.PointCollision(position)) {
         if (this.isVertical)
-          Context.context?.canvas?.style('cursor', 'e-resize');
+          Context.context.element.style('cursor', 'e-resize');
         else if (this.isHorizontal)
-          Context.context?.canvas?.style('cursor', 'n-resize');
+          Context.context.element.style('cursor', 'n-resize');
         this.Select(true, position);
         this.table.Focus();
         this.isClickHold = true;
@@ -734,9 +703,11 @@ export default class Edge
         return true;
       }
     } else if (state === 'RELEASED') {
-      this.isClickHold = false;
-      Context.context?.canvas?.style('cursor', 'default');
-      Renderer.Render();
+      if (this.isClickHold) {
+        this.isClickHold = false;
+        Context.context.element.style('cursor', 'default');
+        Renderer.Render();
+      }
     }
     return true;
   }
@@ -745,8 +716,13 @@ export default class Edge
     if (this.selected) {
       this.extend_button?.OnMouseMove(position, button);
       this.add_button?.OnMouseMove(position, button);
+      if (this.delete_button?.shape === 'CROSS')
+        this.delete_button?.OnMouseMove(position, button);
     }
-    if (this.focusHorizontal || this.focusVertical)
+    if (
+      this.delete_button?.shape === 'SYNC' &&
+      (this.focusHorizontal || this.focusVertical)
+    )
       this.delete_button?.OnMouseMove(position, button);
     if (this.isClickHold) {
       this.Move(position);
@@ -814,6 +790,20 @@ export default class Edge
         ctx.drawingContext.setLineDash([0, 0]);
         this.delete_button?.Render(ctx);
       }
+      if (this.selectedCell) {
+        if (this.start.selectedCell) {
+          ctx.fill(0, 0, 255, 64);
+          ctx.strokeWeight(0);
+          if (this.isHorizontal && this.start.bottomEdge) {
+            ctx.rect(
+              this.start.x,
+              this.start.y,
+              this.length,
+              this.start.bottomEdge.length
+            );
+          }
+        }
+      }
     } else {
       if (this.selected)
         ctx.stroke(
@@ -823,7 +813,18 @@ export default class Edge
           this.highlightColor[3]
         );
       else if (this.selectedCell) {
-        ctx.stroke(0, 0, 255, 255);
+        if (this.start.selectedCell) {
+          ctx.fill(0, 0, 255, 64);
+          ctx.strokeWeight(0);
+          if (this.isHorizontal && this.start.bottomEdge) {
+            ctx.rect(
+              this.start.x,
+              this.start.y,
+              this.length,
+              this.start.bottomEdge.length
+            );
+          }
+        }
       } else
         ctx.stroke(this.color[0], this.color[1], this.color[2], this.color[3]);
       ctx.strokeWeight(this.edgeWidth);
