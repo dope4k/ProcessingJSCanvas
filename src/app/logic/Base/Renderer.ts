@@ -44,7 +44,7 @@ export default class Renderer {
     if (this.dirty) {
       console.log('RENDERING');
       ctx.background(255, 255, 255, 255);
-      if (!Context.context?.selectionMode) {
+      if (!Context.context.selectionMode) {
         for (const obj of this.render_objects) {
           if (obj.PreRender) obj.PreRender(ctx);
         }

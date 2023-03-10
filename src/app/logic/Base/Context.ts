@@ -71,19 +71,17 @@ export default class Context {
   }
 
   static CTRLDown(): boolean {
-    return !!Context.context?.renderer.keyIsDown(
+    return !!Context.context.renderer.keyIsDown(
       Context.context.renderer.CONTROL
     );
   }
 
   static ShiftDown(): boolean {
-    return !!Context.context?.renderer.keyIsDown(
-      Context.context.renderer.SHIFT
-    );
+    return !!Context.context.renderer.keyIsDown(Context.context.renderer.SHIFT);
   }
 
   static AltDown(): boolean {
-    return !!Context.context?.renderer.keyIsDown(Context.context.renderer.ALT);
+    return !!Context.context.renderer.keyIsDown(Context.context.renderer.ALT);
   }
 
   private sketch(ctx: p5) {
@@ -155,7 +153,7 @@ export default class Context {
 
   Setup() {
     this.__element = this.ctx.createCanvas(this.width, this.height);
-    if (this.element_id) this.element?.parent(this.element_id);
+    if (this.element_id) this.element.parent(this.element_id);
     this.__renderer?.AddRenderObject(this.selectionTool);
     this.ctx.frameRate(45);
   }

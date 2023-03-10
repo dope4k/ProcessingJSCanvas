@@ -20,7 +20,7 @@ export default class Button
 
   id: number;
 
-  shape?: 'ARROW' | 'PLUS' | 'CROSS' | 'SYNC';
+  shape: 'ARROW' | 'PLUS' | 'CROSS' | 'SYNC';
 
   position: Vector;
   size: number = 0;

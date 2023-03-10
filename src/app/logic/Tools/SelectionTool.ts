@@ -75,7 +75,7 @@ export default class SelectionTool
           this.selectionID++;
           Renderer.Render();
         } else {
-          Context.context?.OnSelection();
+          Context.context.OnSelection();
         }
       }
     }
@@ -84,7 +84,7 @@ export default class SelectionTool
   OnMouseMove(position: p5.Vector, button?: string | undefined): void {
     if (this.dragStart) {
       this.dragEnd = position;
-      Context.context?.OnSelection(this);
+      Context.context.OnSelection(this);
       Renderer.Render();
     }
   }
