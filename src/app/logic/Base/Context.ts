@@ -87,24 +87,24 @@ export default class Context {
   private sketch(ctx: p5) {
     ctx.keyPressed = () => {
       this.OnKey(ctx.key, 'PRESSED');
-      return false;
+      // return false;
     };
     ctx.keyReleased = () => {
       this.OnKey(ctx.key, 'RELEASED');
-      return false;
+      // return false;
     };
     ctx.keyTyped = () => {
       this.OnKey(ctx.key, 'TYPED');
-      return false;
+      // return false;
     };
 
     ctx.mouseMoved = () => {
       this.OnMouseMove(new Vector(ctx.mouseX, ctx.mouseY));
-      return false;
+      // return false;
     };
     ctx.mouseDragged = () => {
       this.OnMouseMove(new Vector(ctx.mouseX, ctx.mouseY), ctx.mouseButton);
-      return false;
+      // return false;
     };
     ctx.mouseClicked = () => {
       this.OnMouseButton(
@@ -112,7 +112,7 @@ export default class Context {
         ctx.mouseButton,
         'CLICKED'
       );
-      return false;
+      // return false;
     };
     ctx.mousePressed = () => {
       {
@@ -121,7 +121,7 @@ export default class Context {
           ctx.mouseButton,
           'PRESSED'
         );
-        return false;
+        // return false;
       }
     };
     ctx.mouseReleased = () => {
@@ -130,23 +130,23 @@ export default class Context {
         ctx.mouseButton,
         'RELEASED'
       );
-      return false;
+      // return false;
     };
     ctx.mouseWheel = (evt: { delta: number }) => {
       this.OnMouseWheel(new Vector(ctx.mouseX, ctx.mouseY), evt.delta);
-      return false;
+      // return false;
     };
     ctx.touchStarted = () => {
       this.OnTouch(ctx.touches as Touch[], 'STARTED');
-      return false;
+      // return false;
     };
     ctx.touchMoved = () => {
       this.OnTouch(ctx.touches as Touch[], 'MOVED');
-      return false;
+      // return false;
     };
     ctx.touchEnded = () => {
       this.OnTouch(ctx.touches as Touch[], 'ENDED');
-      return false;
+      // return false;
     };
     ctx.draw = () => this.Render();
   }
@@ -207,6 +207,19 @@ export default class Context {
     );
     this.__renderer?.RemoveRenderObject(id);
     Renderer.Render();
+  }
+
+  removeAllObjects()
+  {
+    this.__renderer?.RemoveAllObjects();
+      
+    this.OnMouseMoveDispatchers = [];
+    this.OnMouseButtonDispatchers = [];
+    this.OnMouseWheelDispatchers = [];
+    this.OnTouchDispatchers = [];
+    this.OnKeyDispatchers = [];
+    this.OnSelectionDispatchers= [];
+    Renderer.Render()  
   }
 
   InitRenderer() {

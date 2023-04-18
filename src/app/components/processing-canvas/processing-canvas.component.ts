@@ -1,8 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import Button from 'src/app/logic/Components/Button';
-import Image from 'src/app/logic/Components/Image';
-import Context from '../../logic/Base/Context';
-import Table from '../../logic/Components/Table';
+import { Component ,ElementRef, ViewChild } from '@angular/core';
+import { AppServiceService } from 'src/app/app-service.service';
 
 @Component({
   selector: 'app-processing-canvas',
@@ -10,26 +7,14 @@ import Table from '../../logic/Components/Table';
   styleUrls: ['./processing-canvas.component.scss'],
 })
 export class ProcessingCanvasComponent {
-  context?: Context;
-
-  fileAdded(evt: Event) {
-    const files: FileList = (evt.target as any).files;
-
-    const img = document.createElement('img');
-    const src = URL.createObjectURL(files[0]);
-    img.src = src;
-
-    img.onload = () => {
-      this.context = new Context(1000, 800, 'canvas');
-      this.context.InitRenderer();
-
-      const table = new Table();
-      table.CreateTable(50, 50, 5, 5, 50);
-      this.context.AddObject(table);
-
-      const image = new Image(src, img.width, img.height);
-      this.context?.AddObject(image);
-      img.remove();
-    };
+  @ViewChild('canvasContainer') canvasContainer: ElementRef | undefined ;
+  constructor(public appService: AppServiceService){}
+  removeCanvasElements()
+  {
+    const canvasElements = this.canvasContainer?.nativeElement.getElementsByTagName('canvas');
+    if (canvasElements.length > 0) {
+      canvasElements[0].remove();
+    }
   }
+
 }

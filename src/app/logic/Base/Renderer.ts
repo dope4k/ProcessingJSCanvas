@@ -39,7 +39,10 @@ export default class Renderer {
       this.render_objects as any as ContextObject[]
     ).filter((o) => o.id !== id) as any as Renderable[];
   }
-
+  RemoveAllObjects()
+  {
+    this.render_objects = []
+  }
   Render(ctx: p5) {
     if (this.dirty) {
       ctx.background(255, 255, 255, 255);

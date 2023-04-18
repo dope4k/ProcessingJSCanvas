@@ -1,3 +1,21 @@
-<div>
-  <app-processing-canvas></app-processing-canvas>
+<div class="app_container">
+  <header class="py-3 px-4 bg-primary">
+    <div class="logo">
+      <a href="javascript:void(0)"><img src="../../assets/images/scan_file1.png" alt=""> OCR</a>
+    </div>
+  </header>
+  <div class="app-main">
+    <div class="p-1 my-container active-cont">
+      <nav class="navbar top-navbar navbar-light bg-light px-5">
+        <a class="btn" id="menu-btn">
+          <i class="fa-solid fa-angle-right"></i>
+        </a>
+        <a>
+          Annotate
+        </a>
+      </nav>
+      <app-processing-canvas></app-processing-canvas>
+    </div>
+    <app-left-panel></app-left-panel>
+  </div>
 </div>

@@ -1,0 +1,331 @@
+<div class="side-navbar active-nav d-flex justify-content-between flex-wrap flex-column bg-primary" id="sidebar">
+  <ul class="nav text-white w-100">
+    <li href="#" class=" top-full ">
+      <div class="table_heading">
+        <h2>Optical Character <b>Recognition</b> </h2>
+        <hr>
+        <p>Document Processing with automated data capture and extraction.</p>
+        <!-- <div class="bgimg">
+          <img src="../../assets/images/file1.png" alt="">
+        </div> -->
+      </div>
+      <button type="button" class="remove-image" style="border: none; color: white; text-transform:none">
+        Auto Table Detection
+        <span class="image-title"></span></button>
+      <div class="properties">
+        <!-- <ng-container>
+          <div class="row">
+            <div class="col mt-2 w-50" *ngFor="let item of appService.tables | keyvalue;">
+              <div class="create_tablebar">
+                <button type="button" [ngClass]="{'active': appService.currentTable === item.key}"
+                  class="btn btn-outline-secondary" (click)="setCurrentTable(item.key)">
+                  {{item | getLabel}}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="16" fill="currentColor" class="bi bi-table"
+                    viewBox="0 0 16 16">
+                    <path
+                      d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2zm15 2h-4v3h4V4zm0 4h-4v3h4V8zm0 4h-4v3h3a1 1 0 0 0 1-1v-2zm-5 3v-3H6v3h4zm-5 0v-3H1v2a1 1 0 0 0 1 1h3zm-4-4h4V8H1v3zm0-4h4V4H1v3zm5-3v3h4V4H6zm4 4H6v3h4V8z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </ng-container> -->
+        <!-- create new table button -->
+        <div style="margin-top:10px;">
+          <button class="btn btn-secondary" (click)="appService.toggle_DisplayTable()">
+            Create New
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-table"
+              viewBox="0 0 16 16">
+              <path
+                d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2zm15 2h-4v3h4V4zm0 4h-4v3h4V8zm0 4h-4v3h3a1 1 0 0 0 1-1v-2zm-5 3v-3H6v3h4zm-5 0v-3H1v2a1 1 0 0 0 1 1h3zm-4-4h4V8H1v3zm0-4h4V4H1v3zm5-3v3h4V4H6zm4 4H6v3h4V8z" />
+            </svg> </button>
+        </div>
+        <div class="propertiesbox">
+          <!-- <div class="inline">
+            <h4 *ngIf="appService.displayProps==true" class="mt-2">
+              Properties</h4>      
+               <div>
+                <svg *ngIf="appService.displayProps==true && appService.actionsArray.length>0" (click)="appService.undoFunctionality()" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="white" class="bi bi-arrow-counterclockwise my-auto" viewBox="0 0 16 16">
+                  <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2v1z"/>
+                  <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466z"/>
+                </svg>
+                <svg *ngIf="appService.displayProps==true && appService.redoArray.length>0" xmlns="http://www.w3.org/2000/svg" (click)="appService.redoFunctionality()" width="16" height="16" fill="white" class="bi bi-arrow-clockwise my-auto" viewBox="0 0 16 16">
+                  <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                  <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+                </svg>
+               </div>               
+          </div> -->
+          <div style="margin-top:10px;">
+            <button class="btn btn-secondary mt-3">
+              Reset Zoom
+              <i class="fa fa-search-plus"></i>
+            </button>
+          </div>
+          <div class="row" *ngIf="appService.var_DisplayTable">
+            <form [formGroup]="appService.newTableForm" class="propertiesform">
+              <div class="col-12">
+                <div class="mb-3">
+                  <label for="exampleFormControlInput1" class="form-label">Table Name</label>
+                  <input id="file-upload" type="text" name="image" class="form-control" formControlName="name"
+                    >
+                  <div class="text-danger"
+                    *ngIf="appService.newTableForm.controls['name'].touched && (appService.newTableForm.controls['name'].value==null || appService.newTableForm.controls['name'].value=='')">
+                    Enter Name
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-6">
+                  <div class="mb-3">
+                    <label for="exampleFormControlInput1" class="form-label">Rows</label>
+                    <input id="file-upload" type="number" min=1 max=20 name="image" class="form-control"
+                      formControlName="rows" >
+                    <div class="text-danger"
+                      *ngIf="appService.newTableForm.controls['rows'].touched && (appService.newTableForm.controls['rows'].value==null || appService.newTableForm.controls['rows'].value=='' || appService.newTableForm.controls['rows'].value>20)">
+                      Enter number between 1 to 20
+                    </div>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="mb-3">
+                    <label for="exampleFormControlInput1" class="form-label">Columns</label>
+                    <input id="file-upload" type="number" min=1 max=20 name="image" class="form-control"
+                      formControlName="columns" >
+                    <div class="text-danger"
+                      *ngIf="appService.newTableForm.controls['columns'].touched && (appService.newTableForm.controls['columns'].value==null || appService.newTableForm.controls['columns'].value=='' || appService.newTableForm.controls['columns'].value>20)">
+                      Enter number between 1 to 20
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+              <div class="col-12" style="margin-top:10px;">
+                <button class="btn btn-secondary" (click)="appService.createTable()">
+                  Display Table
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-table"
+                    viewBox="0 0 16 16">
+                    <path
+                      d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2zm15 2h-4v3h4V4zm0 4h-4v3h4V8zm0 4h-4v3h3a1 1 0 0 0 1-1v-2zm-5 3v-3H6v3h4zm-5 0v-3H1v2a1 1 0 0 0 1 1h3zm-4-4h4V8H1v3zm0-4h4V4H1v3zm5-3v3h4V4H6zm4 4H6v3h4V8z" />
+                  </svg></button>
+              </div>
+            </form>
+            <!-- <div class="col-md-12 editproperties" *ngIf="appService.displayProps==true">
+                <div style="margin-top:10px;"
+                  (click)="appService.removeIconColor();editPanel=true;appService.nameUpdate=true"
+                  *ngIf="isTableButton==true && editPanel==false">
+                  <button>
+                    Edit
+                    <i class="fas fa-edit"></i>
+                  </button>
+                </div>
+                <div style="margin-top:10px;" *ngIf="isTableButton==true && editPanel==false">
+                  <button (click)="appService.cancelAddProp();appService.removeSelection();appService.Resize()">
+                    Move & Resize
+                    <i class="fas fa-expand-alt"></i>
+                  </button>
+                </div>
+                <div style="margin-top:10px;" *ngIf="isTableButton==true && editPanel==false">
+                  <button (click)="appService.removeIconsAndDiscard()">
+                    Ignore
+                    <i class="fa fa-ban" aria-hidden="true"></i>
+                  </button>
+                </div>
+                  <div class="row w-100" style="margin-top:10px;" *ngIf="isTableButton==true && editPanel==false ">
+                    <div class="col">
+                      <button (click)="exportJSON()">
+                        Export to JSON
+                        <i class="fa fa-file-export"></i>
+                      </button>
+                    </div>
+                    <div class="col">
+                      <button (click)="exportEXCEL()"> 
+                        Export to Excel
+                        <i class="fa fa-file-export"></i>
+                      </button>
+                    </div>
+                  </div>
+                <div style="margin-top:10px;" *ngIf="isTableButton==true && editPanel==true">
+                  <button (click)="appService.addCurrentState();appService.addRowCol('top')">Add Row (Top)</button>
+                </div>
+                <div style="margin-top:10px;" *ngIf="isTableButton==true && editPanel==true">
+                  <button (click)="appService.addCurrentState();appService.addRowCol('bottom')">Add Row (Bottom)</button>
+                </div>
+                <div style="margin-top:10px;" *ngIf="isTableButton==true && editPanel==true">
+                  <button (click)="appService.addCurrentState();appService.addRowCol('left')">Add Column (Left)</button>
+                </div>
+                <div style="margin-top:10px;" *ngIf="isTableButton==true && editPanel==true">
+                  <button (click)="appService.addCurrentState();appService.addRowCol('right')">Add Column (Right)</button>
+                </div>
+              </div>
+              <div style="margin-top:10px;"
+                *ngIf="isTableButton==true && appService.displayProps==true && editPanel==true">
+                <button class="btn btn-secondary" (click)="appService.removeIconColor();editPanel=false">Back to
+                  Properties</button>
+              </div>
+              <div id="wrapper">
+                <div id="buildZone">
+                  <div id="controls" class="d-flex mt-3 ">
+                    <button id="square" type="button" class="btn btn-outline-secondary me-3"
+                      *ngIf="isTableButton==false">Add Squre
+                      <i class="fa fa-square"></i>
+                    </button>
+                    <button type="button" class="btn btn-secondary me-12"
+                      *ngIf="isTableButton==false || isTableButton==true && appService.displayProps==true && editPanel==false"
+                      (click)="appService.deleteTable()">Delete
+                      <i class="fa fa-trash"></i>
+                    </button>
+                  </div>
+                  <div class="col-md-12 ">
+                    <div class="select_cells"
+                      *ngIf="appService?.tables[appService.currentTable] && objectKeys(appService?.tables[appService.currentTable].group).length>4  && appService?.showFetchData">
+                      <div ngClass="celldiv" *ngIf="this.appService.selectCells==true"
+                        (click)="this.appService.selectCells=false" class="active"><span>Unselect Cells</span></div>
+                      <div ngClass="celldiv" *ngIf="this.appService.selectCells==false"
+                        (click)="this.appService.selectCells=true" class="active"><span>Select Cells</span></div>
+                      <div class="celldropdowm" *ngIf="this.appService.selectCells==true">
+                        <div class="row">
+                          <label class="d-flex align-items-center flex-row ms-1" *ngFor="let radiobutton of radioItems">
+                            <input type="radio" name="options" class="me-2 " (click)="model.option = radiobutton;selectChange()"
+                            [checked]="radiobutton === model.option">
+                            <span  class="text-white" style="margin-bottom: 3px;">{{radiobutton}}</span>
+                          </label>
+                        </div>
+                      </div>
+                      <div class="celldropdown">
+                        <div class="row">
+                          <div class="col-md-12" *ngIf="this.appService.selectCells==true">
+                            <button type="button" (click)="appService.addCurrentState();cellsMergeSelection()"
+                              class="btn btn-outline-secondary mt-4 active"><span>Merge Section</span></button>
+                          </div>
+                          <div class="col-md-12" *ngIf="this.appService.selectCells==true">
+                            <button type="button" (click)="appService.addCurrentState();cellsUnmergeSelection()"
+                              class="btn btn-outline-secondary mt-4 active"><span>Unmerge Section</span></button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div> -->
+          </div>
+        </div>
+        <!-- <div class="row"
+        *ngIf="appService?.tables[appService.currentTable] && objectKeys(appService?.tables[appService.currentTable].group).length>4  && appService?.showFetchData">
+          <div class="col-md-12">
+            <button type="button" (click)="appService.fetchDataIcons(1);appService.rowOrCol('row')"
+              class="btn btn-outline-secondary mt-2 active"><span>Magic Split Row</span> <i
+                class="fa-solid fa-wand-magic-sparkles"></i></button>
+                <button type="button" (click)="appService.fetchDataIcons(0);appService.rowOrCol('column')"
+              class="btn btn-outline-secondary mt-2 active"><span>Magic Split Column</span> <i
+                class="fa-solid fa-wand-magic-sparkles"></i></button>
+                <button type="button" (click)="appService.fetchDataIcons(2);appService.rowOrCol('both')"
+              class="btn btn-outline-secondary mt-2 active"><span>Magic Split Row & Column</span> <i
+                class="fa-solid fa-wand-magic-sparkles"></i></button>
+           </div>
+  </div> -->
+        <!-- <div class="">
+          <div class="row extract_table"
+          *ngIf="appService?.tables[appService.currentTable] && appService?.showFetchData">
+            <div class="col-md-12">
+              <h4 class="mt-2">
+                Extract Table</h4>
+              <div class="checkboxdiv">
+                <input id="5" type="checkbox" [(ngModel)]="toggleVar">
+                <label for="5">Table has lines</label>
+              </div>
+              <button type="button" (click)="ToggleNoLineVariable()"
+                class="btn btn-outline-secondary mt-4 active"><span>Extract Table</span></button>
+            </div>
+          </div>
+        </div> -->
+        <!-- <div *ngIf="appService?.showIcons">
+          <h4 class="mt-3">
+            Additional Properties</h4>
+          <div *ngIf="appService.selectSubRange==false && appService.currentSelectionsIn=='column'">
+            <h6 class="mt-3">Selected Rows:</h6>
+            <div class="rowSelected">
+              <div class="circle-singleline" *ngFor="let row of appService.selRows">{{row}}</div>
+            </div>
+          </div>
+          <div *ngIf="appService.selectSubRange==false && appService.currentSelectionsIn=='row'">
+            <h6 class="">Selected Colums:</h6>
+            <div class="columnSelected">
+              <div class="circle-singleline" *ngFor="let col of appService.selCols">{{col}}</div>
+            </div>
+          </div>
+          <div *ngIf="appService.selectSubRange==false && appService.currentSelectionsIn=='both'">
+            <h6 class="mt-3">Selected Rows:</h6>
+            <div class="rowSelected">
+              <div class="circle-singleline" *ngFor="let row of appService.selRows">{{row}}</div>
+            </div>
+          </div>
+          <div *ngIf="appService.selectSubRange==false && appService.currentSelectionsIn=='both'">
+            <h6 class="">Selected Colums:</h6>
+            <div class="columnSelected">
+              <div class="circle-singleline" *ngFor="let col of appService.selCols">{{col}}</div>
+            </div>
+          </div>      
+          <div class="col-md-12">
+            <button type="button" *ngIf="this.appService.selectCells==true" (click)="this.appService.selectCells=false"
+              class="btn btn-outline-secondary mt-4 active"><span>Unselect Cells</span></button>
+            <button type="button" *ngIf="this.appService.selectCells==false" (click)="this.appService.selectCells=true"
+              class="btn btn-outline-secondary mt-4 active"><span>Select Cells</span></button>
+          </div>
+          <div class="celldropdowm" *ngIf="this.appService.selectCells==true">
+            <div class="row">
+              <label class="d-flex align-items-center flex-row ms-1" *ngFor="let radiobutton of radioItems">
+                <input type="radio" name="options" class="me-2 " (click)="model.option = radiobutton;selectChange()"
+                [checked]="radiobutton === model.option">
+                <span  class="text-white" style="margin-bottom: 3px;">{{radiobutton}}</span>
+              </label>
+            </div>
+          </div>
+          <div>
+            <input type="checkbox" [(ngModel)]="appService.keepExistingLines" (click)="appService.showKeepExistingLines()" class="text-dark" id="506">
+            <label for="506" class="text-light" style="padding-left: 10px;">Keep Existing Lines</label>
+          </div>
+          <div class="d-flex align-items-center justify-content-between">
+            <button type="button" class="btn btn-secondary mt-2 me-2"
+              (click)="appService.tableWRTRowCol()"><span>Done</span> <i class="fa-solid fa-check"></i></button>
+            <button type="button" class="btn btn-outline-secondary mt-2 bg-transparent"
+              (click)="appService.cancelAddProp() " ><span>Cancel</span> <i class="fa-regular fa-trash-can"></i> </button>
+          </div>
+          <div>
+          </div>
+        </div> -->
+      </div>
+      <!-- <div class="properties"> 
+  <div class="propertiesbox">
+    <form class="propertiesform">
+      <div class="row">
+        <div class="editproperties">
+          <div class="row w-100" style="margin-top:10px;" *ngIf="this.appService.isReadingLink==true">
+            <div class="col">
+              <button (click)="resetZoom()" *ngIf="appService?.canvas?.getZoom()!=1">
+                Reset Zoom
+                <i class="fa fa-search-plus"></i>
+              </button>
+            </div>
+          </div>
+        <div class="row w-100" style="margin-top:10px;" *ngIf="this.appService.isReadingLink==true">
+          <div class="col">
+            <button (click)="exportJSON()">
+              Export to JSON
+              <i class="fa fa-file-export"></i>
+            </button>
+          </div>
+          <div class="col">
+            <button (click)="exportEXCEL()">
+              Export to Excel
+              <i class="fa fa-file-export"></i>
+            </button>
+          </div>
+        </div>
+        </div>
+      </div>
+    </form>
+    </div>
+</div> -->
+    </li>
+  </ul>
+</div>
