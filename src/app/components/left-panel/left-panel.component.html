@@ -9,10 +9,10 @@
           <img src="../../assets/images/file1.png" alt="">
         </div> -->
       </div>
-      <button type="button" class="remove-image" style="border: none; color: white; text-transform:none">
+      <button (click)="appService.autoTableCreation()" *ngIf="appService.fileUploaded==true" type="button" class="remove-image" style="border: none; color: white; text-transform:none">
         Auto Table Detection
         <span class="image-title"></span></button>
-      <div class="properties">
+      <div class="properties" *ngIf="appService.fileUploaded==true">
         <!-- <ng-container>
           <div class="row">
             <div class="col mt-2 w-50" *ngFor="let item of appService.tables | keyvalue;">
@@ -55,7 +55,7 @@
                 </svg>
                </div>               
           </div> -->
-          <div style="margin-top:10px;">
+          <div style="margin-top:10px;" (click)="appService.getZoom()">
             <button class="btn btn-secondary mt-3">
               Reset Zoom
               <i class="fa fa-search-plus"></i>

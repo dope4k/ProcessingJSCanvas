@@ -42,7 +42,7 @@ export default class Context {
     return this.ctx;
   }
 
-  private __renderer?: Renderer;
+  public __renderer?: Renderer;
 
   width: number;
   height: number;

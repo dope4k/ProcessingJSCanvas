@@ -688,11 +688,10 @@ export default class Edge
       }
     } else if (button === 'left' && state === 'PRESSED') {
       if (this.collider.PointCollision(position)) {
-        if (this.isVertical)
-          Context.context.element.style('cursor', 'e-resize');
-        else if (this.isHorizontal)
-          Context.context.element.style('cursor', 'n-resize');
-        this.Select(true, position);
+        
+        Context.context.OnSelectionDispatchers.forEach(tab=>{
+          (tab as Table).focus=false;
+        })
         this.table.Focus();
         this.isClickHold = true;
         Renderer.Render();
@@ -704,6 +703,13 @@ export default class Edge
       }
     } else if (state === 'RELEASED') {
       if (this.isClickHold) {
+        if(this.table.focus) {
+          if (this.isVertical)
+            Context.context.element.style('cursor', 'e-resize');
+          else if (this.isHorizontal)
+            Context.context.element.style('cursor', 'n-resize');
+          this.Select(true, position);
+        }
         this.isClickHold = false;
         Context.context.element.style('cursor', 'default');
         Renderer.Render();
@@ -725,7 +731,9 @@ export default class Edge
     )
       this.delete_button?.OnMouseMove(position, button);
     if (this.isClickHold) {
-      this.Move(position);
+      if(this.table.focus) {
+        this.Move(position);
+      }
     }
   }
 

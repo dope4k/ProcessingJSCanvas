@@ -12,6 +12,7 @@ import Renderer, { Renderable } from '../Base/Renderer';
 import SelectionTool from '../Tools/SelectionTool';
 import Edge from './Edge';
 import Node from './Node';
+import Cell from './Cell';
 
 export default class Table
   implements
@@ -153,6 +154,36 @@ export default class Table
         );
         this.AddLink(new Node(this, i, j), new Node(this, i, j + cellSize));
       }
+    }
+  }
+
+  autoTableCreation(cells:Cell[],minX:number,minY:number)
+  {
+
+    for(let x=0;x<cells.length;x++)
+    {
+      //top
+      if(cells[x].y==minY)
+      {
+        this.AddLink(new Node(this,cells[x].x,cells[x].y),
+        new Node(this,cells[x].x+cells[x].width,cells[x].y))  
+      }
+
+      //left
+      if(cells[x].x==minX)
+      {
+        this.AddLink(new Node(this,cells[x].x,cells[x].y),
+        new Node(this,cells[x].x,cells[x].y+cells[x].height))
+      }
+      
+      //bottom
+      this.AddLink(new Node(this,cells[x].x,cells[x].y+cells[x].height),
+      new Node(this,cells[x].x+cells[x].width,cells[x].y+cells[x].height))
+      
+      //right
+      this.AddLink(new Node(this,cells[x].x+cells[x].width ,cells[x].y),
+      new Node(this,cells[x].x+cells[x].width,cells[x].y+cells[x].height))
+
     }
   }
 
