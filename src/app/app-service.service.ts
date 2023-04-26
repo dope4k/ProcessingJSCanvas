@@ -100,7 +100,16 @@ export class AppServiceService {
   scaledDimensionWidth=800;
   ngAfterViewInit() {
   }
-  isClose(a:Cell,b:Cell)
+  isCloseNumbers(a:number,b:number)
+  {
+    if(a-b >= -2 && a-b <= 2)
+    {
+      return true;
+    }
+    return false;
+
+  }
+  isCloseCells(a:Cell,b:Cell)
   {
     if((a.y+a.height)-(b.y) == -1 || (a.y+a.height)-(b.y) == -2)
     {
@@ -109,41 +118,95 @@ export class AppServiceService {
     }
     else return b;
   }
-  autoTableCreation()
-  {
-    this.apiService.autoTableDetection(this.fileToSend).subscribe(data=>{
-      let allCells=(data as any).cells;
-      let allXCords=(data as any).xCords;
-      let allYCords=(data as any).yCords;      
-      let cells:Cell[]=[]
-      let scaleRatio=0.5;
-      let origImageWidth=Context.context?.__renderer?.render_objects[0];
-      origImageWidth=(origImageWidth as any).width;
-      let origImageHeight=Context.context?.__renderer?.render_objects[0];
-      origImageHeight=(origImageHeight as any).height;
-      let canvasWidth=Context.context?.width;
-      let canvasHeight=Context.context?.height;
-      scaleRatio=Math.min(
-        canvasHeight/(origImageHeight as any),
-        canvasWidth/(origImageWidth as any),
-      )      
-      for(let x=0;x < allCells.length;x++)
-      {
-          let cell= new Cell(allCells[x].row, allCells[x].column, allCells[x].id, allCells[x].rows,
-            allCells[x].columns, Math.round(allCells[x]['x-cord']*scaleRatio),Math.round(allCells[x]['y-cord']*scaleRatio),Math.round(allCells[x].height*scaleRatio),
-             Math.round(allCells[x].width*scaleRatio))
-          cells.push(cell); 
-      } 
-      for(let x =0 ; x <cells.length;x++)
-      {
-        if(x!=0)
-        {
-          cells[x]=this.isClose(cells[x-1],cells[x])
+  autoTableCreation() {
+    this.apiService.autoTableDetection(this.fileToSend).subscribe(data => {
+      let allCells = (data as any).cells;
+      let allXCords = (data as any).xCords;
+      let allYCords = (data as any).yCords;
+      let cells: Cell[] = []
+
+      //find scaleRatio
+      let scaleRatio = 0.5;
+      let origImageWidth = Context.context?.__renderer?.render_objects[0];
+      origImageWidth = (origImageWidth as any).width;
+      let origImageHeight = Context.context?.__renderer?.render_objects[0];
+      origImageHeight = (origImageHeight as any).height;
+      let canvasWidth = Context.context?.width;
+      let canvasHeight = Context.context?.height;
+      scaleRatio = Math.min(
+        canvasHeight / (origImageHeight as any),
+        canvasWidth / (origImageWidth as any),
+      )
+
+      //find maxId & push incoming cells to Cell Format array
+      let maxId = 0;
+      for (let x = 0; x < allCells.length; x++) {
+        let cell = new Cell(allCells[x].row, allCells[x].column, allCells[x].id, allCells[x].rows,
+          allCells[x].columns, Math.round(allCells[x]['x-cord'] * scaleRatio), Math.round(allCells[x]['y-cord'] * scaleRatio), Math.round(allCells[x].height * scaleRatio),
+          Math.round(allCells[x].width * scaleRatio))
+        cells.push(cell);
+      }
+      for (let x = 0; x < cells.length; x++) {
+        if (x != 0) {
+          cells[x] = this.isCloseCells(cells[x - 1], cells[x])
         }
-      } 
-    let table= new Table()
-    table.autoTableCreation(cells,Math.round(allXCords[0]*scaleRatio),Math.round(allYCords[0]*scaleRatio))
-    Context.context?.AddObject(table)
-  })
+        if (cells[x].id > maxId) maxId = cells[x].id;
+      }
+
+      //first 2 coordinates to send in function to detect top and left
+      const firstX = allXCords[0] * scaleRatio;
+      const firstY = allYCords[0] * scaleRatio;
+
+      //--code for missing cells--
+      let xCordsCells: number[] = []
+      let yCordsCells: number[] = []
+      //get new xCords & yCords from cells made
+      for (let x in cells) {
+        if (!xCordsCells.includes(cells[x].x)) {
+          xCordsCells.push(cells[x].x)
+        }
+        if (!yCordsCells.includes(cells[x].y)) {
+          yCordsCells.push(cells[x].y)
+        }
+      }
+
+      //add last cell width and height
+      for (let x = 0; x < cells.length; x++) {
+        if (cells[x].x == xCordsCells[xCordsCells.length - 1]) {
+          if (!xCordsCells.includes(cells[x].x + cells[x].width))
+            xCordsCells.push(cells[x].x + cells[x].width)
+        }
+        if (cells[x].y == yCordsCells[yCordsCells.length - 1]) {
+          if (!yCordsCells.includes(cells[x].y + cells[x].height))
+            yCordsCells.push(cells[x].y + cells[x].height)
+        }
+      }
+
+      // check if a cell exists on the (x,y) from coordinates
+      // if not add a cell to the array
+      for (let x = 0; x < xCordsCells.length - 1; x++) {
+        let check1 = false;
+        for (let y = 0; y < yCordsCells.length - 1; y++) {
+          for (let z = 0; z < cells.length; z++) {
+            if (cells[z].x == xCordsCells[x] && cells[z].y == yCordsCells[y]) {
+              check1 = true;
+              break;
+            }
+          }
+          if (check1 == true) {
+            //adsd new cell here to cells Array
+            let cell = new Cell(1, 1, maxId, 1, 1, xCordsCells[x], yCordsCells[y],
+              yCordsCells[y + 1] - yCordsCells[y], xCordsCells[x + 1] - xCordsCells[x]);
+            cell.isSubmerged = true;
+            cells.push(cell)
+          }
+        }
+      }
+
+      //create a table and send those cells
+      let table = new Table()
+      table.autoTableCreation(cells, Math.round(firstX), Math.round(firstY))
+      Context.context?.AddObject(table)
+    })
   }
 }

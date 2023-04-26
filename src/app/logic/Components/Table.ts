@@ -44,6 +44,8 @@ export default class Table
 
   focus: boolean = false;
 
+  cells: Cell[]=[]
+
   constructor() {
     this.edges = [];
     this.nodes = [];
@@ -159,7 +161,7 @@ export default class Table
 
   autoTableCreation(cells:Cell[],minX:number,minY:number)
   {
-
+    this.cells=cells;
     for(let x=0;x<cells.length;x++)
     {
       //top
