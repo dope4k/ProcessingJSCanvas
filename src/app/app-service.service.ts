@@ -141,8 +141,8 @@ export class AppServiceService {
       //find maxId & push incoming cells to Cell Format array
       let maxId = 0;
       for (let x = 0; x < allCells.length; x++) {
-        let cell = new Cell(allCells[x].row, allCells[x].column, allCells[x].id, allCells[x].rows,
-          allCells[x].columns, Math.round(allCells[x]['x-cord'] * scaleRatio), Math.round(allCells[x]['y-cord'] * scaleRatio), Math.round(allCells[x].height * scaleRatio),
+        let cell = new Cell(allCells[x].row, 1, allCells[x].id, allCells[x].rows,
+          1, Math.round(allCells[x]['x-cord'] * scaleRatio), Math.round(allCells[x]['y-cord'] * scaleRatio), Math.round(allCells[x].height * scaleRatio),
           Math.round(allCells[x].width * scaleRatio))
         cells.push(cell);
       }
@@ -193,15 +193,47 @@ export class AppServiceService {
               break;
             }
           }
-          if (check1 == true) {
+          if (check1 == false) {
             //adsd new cell here to cells Array
             let cell = new Cell(1, 1, maxId, 1, 1, xCordsCells[x], yCordsCells[y],
               yCordsCells[y + 1] - yCordsCells[y], xCordsCells[x + 1] - xCordsCells[x]);
             cell.isSubmerged = true;
             cells.push(cell)
           }
+          check1=false;
         }
       }
+      //sorting cells
+      cells.sort((a, b) => {
+        if (a.x !== b.x) {
+          return a.x - b.x;
+        } else {
+          return a.y - b.y;
+        }
+      });
+      //fix height of cells 
+      for(let x=0;x<cells.length-1;x++)
+      {
+        if(cells[x].x==cells[x+1].x)
+        {
+          cells[x].height=cells[x+1].y-cells[x].y
+        }
+      }
+      cells.sort((a, b) => {
+        if (a.y !== b.y) {
+          return a.y - b.y;
+        } else {
+          return a.x - b.x;
+        }
+      });
+      for(let x=0;x<cells.length-1;x++)
+      {
+        if(cells[x].y==cells[x+1].y)
+        {
+          cells[x].width=cells[x+1].x-cells[x].x  
+        }
+      }
+      
 
       //create a table and send those cells
       let table = new Table()
