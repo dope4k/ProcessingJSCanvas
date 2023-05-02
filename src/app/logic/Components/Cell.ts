@@ -5,7 +5,7 @@ export default class Cell {
     rows: number =1;
     columns: number=1;
     submergedOf: number | undefined;
-    isSubmerged: boolean | undefined;
+    isNewCell: boolean | undefined;
     x:number=5;
     y:number=5;
     height:number=100;

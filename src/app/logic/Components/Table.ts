@@ -121,7 +121,7 @@ export default class Table
     return edge;
   }
 
-  AddLink(pointA: Node, pointB: Node) {
+  AddLink(pointA: Node, pointB: Node, disabled?:boolean) {
     pointA = this.AddNode(pointA);
     pointB = this.AddNode(pointB);
     let edge = new Edge(this, pointA, pointB);
@@ -133,6 +133,7 @@ export default class Table
       edge.start.bottomEdge = edge;
       edge.end.topEdge = edge;
     }
+    if(disabled==true) edge.disabled=true;
     return edge;
   }
 
@@ -159,7 +160,77 @@ export default class Table
     }
   }
 
-  autoTableCreation(cells:Cell[],minX:number,minY:number)
+  newCellToRightExist(newCell:Cell,xCordsCells: number[],allCells:Cell[])
+  {
+    let rightIndex:number=0;
+    //find right index in xCord array
+    for(let x=0; x <xCordsCells.length;x++)
+    {
+      if(xCordsCells[x]==newCell.x)
+      {
+        if(xCordsCells[x+1])
+        {
+          rightIndex=xCordsCells[x+1];
+          break;
+        }
+      }
+    }
+    //if no new index found return false
+    if(rightIndex==0)
+    {
+      return false;
+    }
+    else
+    {
+      //check if right side cell exists and is new cell
+      for(let x in allCells)
+      {
+        if(allCells[x].x==rightIndex && allCells[x].y==newCell.y && allCells[x].isNewCell)
+        {
+          //new cells to right exists and is new Cell
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+  newCellToBottomExist(newCell:Cell,yCordsCells:number[],allCells:Cell[])
+  {
+    let bottomIndex:number=0;
+    //find right index in xCord array
+    for(let x=0; x < yCordsCells.length;x++)
+    {
+      if(yCordsCells[x]==newCell.y)
+      {
+        if(yCordsCells[x+1])
+        {
+          bottomIndex=yCordsCells[x+1];
+          break;
+        }
+      }
+    }
+    //if no new index found return false
+    if(bottomIndex==0)
+    {
+      return false;
+    }
+    else
+    {
+      //check if right side cell exists and is new cell
+      for(let x in allCells)
+      {
+        if(allCells[x].y==bottomIndex && allCells[x].x==newCell.x && allCells[x].isNewCell)
+        {
+          //new cells to right exists and is new Cell
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+
+  autoTableCreation(cells:Cell[],minX:number,minY:number,maxX:number, maxY:number,
+    xCordsCells: number[],yCordsCells: number[])
   {
     this.cells=cells;
     for(let x=0;x<cells.length;x++)
@@ -180,12 +251,13 @@ export default class Table
       
       //bottom
       this.AddLink(new Node(this,cells[x].x,cells[x].y+cells[x].height),
-      new Node(this,cells[x].x+cells[x].width,cells[x].y+cells[x].height))
+      new Node(this,cells[x].x+cells[x].width,cells[x].y+cells[x].height)),
       
       //right
       this.AddLink(new Node(this,cells[x].x+cells[x].width ,cells[x].y),
-      new Node(this,cells[x].x+cells[x].width,cells[x].y+cells[x].height))
-
+      new Node(this,cells[x].x+cells[x].width,cells[x].y+cells[x].height)
+      ,(cells[x].isNewCell && this.newCellToRightExist(cells[x],xCordsCells,cells))?true:false
+      )
     }
   }
 
