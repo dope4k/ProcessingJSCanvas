@@ -37,7 +37,15 @@ export default class Renderer {
   RemoveRenderObject(id: number) {
     this.render_objects = (
       this.render_objects as any as ContextObject[]
-    ).filter((o) => o.id !== id) as any as Renderable[];
+    ).filter(
+      (o) => o.id !== id) as any as Renderable[];
+
+    this.render_objects = (
+      this.render_objects as any as ContextObject[]
+    ).filter(
+      (o: any) => o?.table?.id !== id) as any as Renderable[];
+  
+    
   }
   RemoveAllObjects()
   {

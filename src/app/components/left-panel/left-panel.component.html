@@ -9,9 +9,32 @@
           <img src="../../assets/images/file1.png" alt="">
         </div> -->
       </div>
-      <button (click)="appService.autoTableCreation()" *ngIf="appService.fileUploaded==true" type="button" class="remove-image" style="border: none; color: white; text-transform:none">
+      <button  (click)="appService.autoTableCreation()" 
+      *ngIf="appService.fileUploaded==true"
+       type="button" class="remove-image" style="padding: 8px ;border: none; color: white; text-transform:none">
         Auto Table Detection
-        <span class="image-title"></span></button>
+        <span class="image-title"></span>
+      </button>
+      <button (click)="appService.extractTable(true)" 
+      *ngIf="appService.fileUploaded==true"
+       type="button" class="remove-image" style="padding: 8px ;border: none; color: white; text-transform:none">
+        Extract Table Table has lines
+        <span class="image-title"></span>
+      </button>
+      <button (click)="appService.extractTable(false)" 
+      *ngIf="appService.fileUploaded==true"
+       type="button" class="remove-image" style="padding: 8px ;border: none; color: white; text-transform:none">
+        Extract Table Table has no lines
+        <span class="image-title"></span>
+      </button>
+      <!-- <button 
+      *ngIf="appService.fileUploaded==true"
+       type="button" class="remove-image" style="padding: 8px ;border: none; color: white; text-transform:none">
+       Magic Split
+        <span class="image-title"></span>
+      </button> -->
+      
+
       <div class="properties" *ngIf="appService.fileUploaded==true">
         <!-- <ng-container>
           <div class="row">

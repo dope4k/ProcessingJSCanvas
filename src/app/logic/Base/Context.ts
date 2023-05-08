@@ -8,6 +8,7 @@ import OnMouseWheel from './Events/OnMouseWheel';
 import OnSelection from './Events/OnSelection';
 import OnTouch, { Touch } from './Events/OnTouch';
 import Renderer, { Renderable } from './Renderer';
+import Edge from '../Components/Edge';
 
 export interface ContextObject {
   id: number;
@@ -205,9 +206,32 @@ export default class Context {
     this.OnKeyDispatchers = this.OnKeyDispatchers.filter(
       (o) => (o as any as ContextObject).id !== id
     );
+
+    // Check for objects with `obj.id != id` and `table` property
+    this.OnMouseMoveDispatchers = this.OnMouseMoveDispatchers.filter(
+      (o) =>
+        (o as any as Edge)?.table?.id !== id
+    );
+    this.OnMouseWheelDispatchers = this.OnMouseWheelDispatchers.filter(
+      (o) =>
+        (o as any as Edge)?.table?.id !== id
+    );
+    this.OnMouseButtonDispatchers = this.OnMouseButtonDispatchers.filter(
+      (o) =>
+        (o as any)?.table?.id !== id
+    );
+    this.OnTouchDispatchers = this.OnTouchDispatchers.filter(
+      (o) =>
+        (o as any)?.table?.id !== id
+    );
+    this.OnKeyDispatchers = this.OnKeyDispatchers.filter(
+      (o) =>
+        (o as any)?.table?.id !== id
+    );
+
     this.__renderer?.RemoveRenderObject(id);
     Renderer.Render();
-  }
+}
 
   removeAllObjects()
   {
