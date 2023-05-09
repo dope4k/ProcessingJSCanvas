@@ -1,5 +1,5 @@
 
-<div class="col">
+<div class="col" (click)="appService.displayAllRowsColumnsSelected()">
     <div class="row">
         <div *ngIf="appService.fileUploaded==false" style="z-index: 2;">
             <input type="file" (change)="appService.fileAdded($event)" accept="image/png, image/gif, image/jpeg" />
@@ -11,4 +11,4 @@
       </svg>
     </div>
 </div>
-<div id="canvas" style="z-index: 1;" #canvasContainer></div>
+<div (click)="appService.displayAllRowsColumnsSelected()" id="canvas" style="z-index: 1;" #canvasContainer></div>

@@ -491,6 +491,8 @@ export class AppServiceService {
   {
     if(rowOrCol=='Both')
     {
+      this.selectedColumns=[];
+      this.selectedRows=[]
       let table: Table | undefined;
       this.context?.OnKeyDispatchers.forEach((obj:any)=>{
         if(obj.cells)
@@ -517,18 +519,22 @@ export class AppServiceService {
   loadPage:boolean=true;
   displayAllRowsColumnsSelected()
   {
-    let table= Context.context.OnKeyDispatchers[0];
-    console.log('columns->', (table as Table).edges.forEach(edge=>{
-      if(edge.magicRemove==true && edge.isHorizontal)
-      {  console.log(edge.column) }})
-    );
-    console.log('rows->', (table as Table).edges.forEach(edge=>{
-      if(edge.magicRemove==true && edge.isVertical)
-      {  console.log(edge.row) }})
-    );
-    
-    
-
+    this.selectedRows=[];
+    this.selectedColumns=[];
+    this.loadPage=false;
+    let table= Context?.context?.OnKeyDispatchers[0];
+    if(table)
+    {
+      let edges= (table as Table)?.edges;
+      for(let x in edges)
+      {        
+        if(edges[x].magicRemove==true && edges[x].isVertical) this.selectedRows?.push(edges[x].row)        
+        if(edges[x].magicRemove==true && edges[x].isHorizontal) this.selectedColumns.push(edges[x].column)
+      }
+    }
+    this.selectedColumns= this.removeDuplicateCordsAndSort(this.selectedColumns)
+    this.selectedRows= this.removeDuplicateCordsAndSort(this.selectedRows)
+    this.loadPage=true;
   }
   
 }
