@@ -20,7 +20,7 @@ export default class Button
 
   id: number;
 
-  shape: 'ARROW' | 'PLUS' | 'CROSS' | 'SYNC';
+  shape: 'ARROW' | 'PLUS' | 'CROSS' | 'SYNC' | 'magicPlus' | 'magicMinus';
 
   position: Vector;
   size: number = 0;
@@ -39,7 +39,7 @@ export default class Button
   OnPress?: () => void;
 
   constructor(
-    shape: 'ARROW' | 'PLUS' | 'CROSS' | 'SYNC',
+    shape: 'ARROW' | 'PLUS' | 'CROSS' | 'SYNC' | 'magicPlus' | 'magicMinus',
     x: number,
     y: number,
     size: number = 10,
@@ -72,15 +72,23 @@ export default class Button
     } else if (this.shape === 'CROSS') {
       this.width = this.height = this.size;
       this.radius = this.size * 0.75;
+    } else if (this.shape === 'magicPlus') {
+      this.width = this.size;
+      this.height = this.size;
+      this.radius = this.size * 0.75;
+    } else if (this.shape === 'magicMinus') {
+      this.width = this.size;
+      this.height - this.size;
+      this.radius = this.size * 0.75;
     } else if (this.shape === 'SYNC') {
-      if (this.direction === 'UP' || this.direction === 'DOWN') {
-        this.width = this.size / 3;
-        this.height = this.size;
-      } else if (this.direction === 'LEFT' || this.direction === 'RIGHT') {
-        this.width = this.size;
-        this.height = this.size / 3;
-      }
-      this.radius = Math.max(this.width, this.height) * 0.75;
+    if (this.direction === 'UP' || this.direction === 'DOWN') {
+      this.width = this.size / 3;
+      this.height = this.size;
+    } else if (this.direction === 'LEFT' || this.direction === 'RIGHT') {
+      this.width = this.size;
+      this.height = this.size / 3;
+    }
+    this.radius = Math.max(this.width, this.height) * 0.75;
     }
   }
 
@@ -233,6 +241,58 @@ export default class Button
     }
     ctx.endShape();
   }
+  
+  RenderMagicMinus(ctx: p5): void {
+    if (this.hover) {
+      ctx.fill(255, 0, 0, 255);
+      ctx.stroke(0, 0, 0, 255);
+    } else {
+      ctx.stroke(255, 0, 0, 255);
+      ctx.fill(255, 255, 255, 255);
+    }
+    ctx.strokeWeight(1);
+    ctx.beginShape(1);
+
+    ctx.circle(this.position.x, this.position.y, this.radius * 2);
+    {
+      ctx
+        .vertex(
+          this.position.x - this.width / 3,
+          this.position.y - this.height / 3
+        )
+        .vertex(
+          this.position.x + this.width / 3,
+          this.position.y + this.height / 3
+        )
+        .vertex(
+          this.position.x + this.width / 3,
+          this.position.y - this.height / 3
+        )
+        .vertex(
+          this.position.x - this.width / 3,
+          this.position.y + this.height / 3
+        );
+    }
+    ctx.endShape();
+  }
+
+  RenderMagicPlus(ctx: p5): void {
+    if (this.hover) ctx.fill(0, 0, 0, 64);
+    else ctx.fill(255, 255, 255, 255);
+    ctx.stroke(255, 165, 0);
+    ctx.strokeWeight(2);
+    ctx.beginShape(1);
+
+    ctx.circle(this.position.x, this.position.y, this.radius * 2);
+    {
+      ctx
+        .vertex(this.position.x, this.position.y - this.height / 2)
+        .vertex(this.position.x, this.position.y + this.height / 2)
+        .vertex(this.position.x - this.width / 2, this.position.y)
+        .vertex(this.position.x + this.width / 2, this.position.y);
+    }
+    ctx.endShape();
+  }
 
   RenderCross(ctx: p5): void {
     if (this.hover) {
@@ -341,6 +401,10 @@ export default class Button
       this.RenderArrow(ctx);
     } else if (this.shape === 'PLUS') {
       this.RenderPlus(ctx);
+    } else if (this.shape === 'magicPlus') {
+      this.RenderMagicPlus(ctx);
+    } else if (this.shape === 'magicMinus') {
+      this.RenderMagicMinus(ctx)
     } else if (this.shape === 'CROSS') {
       this.RenderCross(ctx);
     } else if (this.shape === 'SYNC') {

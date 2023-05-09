@@ -10,6 +10,7 @@ import Renderer, { Renderable } from '../Base/Renderer';
 import Button from './Button';
 import Node from './Node';
 import Table from './Table';
+import { AppServiceService } from 'src/app/app-service.service';
 
 export default class Edge
   implements
@@ -37,13 +38,21 @@ export default class Edge
 
   extend_button?: Button;
   add_button?: Button;
+  magicSplit_addBtn?: Button;
+  magicSplit_deleteBtn?: Button;
   delete_button?: Button;
 
   isClickHold: boolean = false;
   selected: boolean = false;
+  
+  magicAdd: boolean = false;
+  magicRemove: boolean = false;
+  magicSplitActive: boolean = false;
+
   selectPositionN?: number;
 
   disabled: boolean = false;
+
 
   bbox: number[] = [0, 0, 0, 0];
 
@@ -52,6 +61,7 @@ export default class Edge
   get isVertical() {
     return this.__isVertical;
   }
+
   get isHorizontal() {
     return this.__isHorizontal;
   }
@@ -59,24 +69,31 @@ export default class Edge
   get x1() {
     return this.start.x;
   }
+
   set x1(val: number) {
     this.start.x = val;
   }
+
   get y1() {
     return this.start.y;
   }
+
   set y1(val: number) {
     this.start.y = val;
   }
+
   get x2() {
     return this.end.x;
   }
+
   set x2(val: number) {
     this.end.x = val;
   }
+
   get y2() {
     return this.end.y;
   }
+
   set y2(val: number) {
     this.end.y = val;
   }
@@ -110,13 +127,40 @@ export default class Edge
     );
   }
 
+  get column()
+  {
+    let count=1;
+    const mainEdge=this;
+    let letfEdge=mainEdge.start.leftEdge;
+    while(letfEdge!=undefined)
+    {
+      count++;
+      letfEdge=letfEdge.start.leftEdge
+    }
+    return count;
+  }
+
+  get row()
+  {
+    let count=1;
+    const mainEdge=this;
+    let topEdge=mainEdge.start.topEdge;
+    while(topEdge!=undefined)
+    {
+      count++;
+      topEdge=topEdge.start.topEdge
+    }
+    return count;
+  }
+
   constructor(
     table: Table,
     nodeA: Node,
     nodeB: Node,
     edgeWidth: number = 3,
     color = [0, 0, 0, 255],
-    highlightColor = [128, 128, 128, 255]
+    highlightColor = [128, 128, 128, 255],
+    private appService?: AppServiceService
   ) {
     this.table = table;
     this.collider = new Collider(this);
@@ -139,6 +183,7 @@ export default class Edge
     this.color = color;
     this.highlightColor = highlightColor;
     this.edgeWidth = edgeWidth;
+
   }
 
   OnContextInit(ctx: Context): void {
@@ -195,6 +240,50 @@ export default class Edge
     }
   }
 
+  private makeBothMagicSplitOptionsUndefined()
+  {
+    this.magicSplit_deleteBtn=undefined 
+    this.magicSplit_addBtn=undefined
+  }
+
+  InitNewAddButton() {
+    const center = this.center;
+    if (this.isVertical) center.x += this.start.leftEdge ? -10 : -10;
+    else if (this.isHorizontal) center.y += this.start.topEdge ? -10 : -10;
+    this.magicSplit_addBtn = new Button('magicPlus', center.x, center.y, 8);
+    if (this.magicSplit_addBtn) {
+      this.magicSplit_addBtn.OnPress = () => {
+        //removes both magic split buttons 
+        this.makeBothMagicSplitOptionsUndefined()
+        //toggle the flag we want
+        this.magicAdd =false;   
+        this.magicRemove =true;
+        //initialize the magic split button again
+        this.InitNewDeleteButton()
+        Renderer.Render()     
+      };
+    }
+  }
+
+  InitNewDeleteButton() {
+    const center = this.center;
+    if (this.isVertical) center.x += this.start.leftEdge ? -10 : -10;
+    else if (this.isHorizontal) center.y += this.start.topEdge ? -10 : -10;
+    this.magicSplit_deleteBtn = new Button('magicMinus', center.x, center.y, 8);
+    if (this.magicSplit_deleteBtn) {
+      this.magicSplit_deleteBtn.OnPress = () => {
+        //removes both magic split buttons 
+        this.makeBothMagicSplitOptionsUndefined()
+        //toggle the flag we want
+        this.magicAdd =true;   
+        this.magicRemove =false;
+        //initialize the magic split button again
+        this.InitNewAddButton()
+        Renderer.Render() 
+      };
+    }
+  }
+
   InitDeleteButton() {
     const center = this.center;
     this.delete_button = new Button(
@@ -228,6 +317,36 @@ export default class Edge
       this.add_button.position = position;
     } else {
       this.InitExtendButton();
+    }
+  }
+
+  CalculateNewAddButtonProps() {
+    if (this.magicSplit_addBtn) {
+      let position = Vector.lerp(
+        this.start.point,
+        this.end.point,
+        0.5 //makes the position in center
+      );
+      if (this.isVertical) position.x += this.start.leftEdge ? -10 : 10;
+      else if (this.isHorizontal) position.y += this.start.topEdge ? -10 : 10;
+      this.magicSplit_addBtn.position = position;
+    } else {
+      this.InitNewAddButton();
+    }
+  }
+
+  CalculateNewDeleteButtonProps() {
+    if (this.magicSplit_deleteBtn && this.selectPositionN !== undefined) {
+      let position = Vector.lerp(
+        this.start.point,
+        this.end.point,
+        this.selectPositionN
+      );
+      if (this.isVertical) position.x += this.start.leftEdge ? -10 : 10;
+      else if (this.isHorizontal) position.y += this.start.topEdge ? -10 : 10;
+      this.magicSplit_deleteBtn.position = position;
+    } else {
+      this.InitNewDeleteButton();
     }
   }
 
@@ -356,6 +475,7 @@ export default class Edge
   }
 
   Select(select: boolean = true, select_position?: Vector) {
+   
     this.selected = select;
     if (select_position) {
       if (this.isHorizontal) {
@@ -667,6 +787,16 @@ export default class Edge
     button: string,
     state: 'PRESSED' | 'RELEASED' | 'CLICKED'
   ): boolean {
+    if(this.magicAdd){
+      this.magicSplit_addBtn?.OnMouseButton(position, button, state);
+    }
+    if(this.magicRemove){
+      this.magicSplit_deleteBtn?.OnMouseButton(position, button, state);
+    }
+    if(this.magicSplitActive==true)
+    {
+      return true;
+    }
     if (this.selected) {
       this.extend_button?.OnMouseButton(position, button, state);
       this.add_button?.OnMouseButton(position, button, state);
@@ -722,6 +852,8 @@ export default class Edge
     if (this.selected) {
       this.extend_button?.OnMouseMove(position, button);
       this.add_button?.OnMouseMove(position, button);
+      this.magicSplit_addBtn?.OnMouseMove(position, button);
+      this.magicSplit_deleteBtn?.OnMouseMove(position, button);
       if (this.delete_button?.shape === 'CROSS')
         this.delete_button?.OnMouseMove(position, button);
     }
@@ -751,6 +883,8 @@ export default class Edge
       if (this.selected) {
         this.extend_button?.OnTouch(touches, state);
         this.add_button?.OnTouch(touches, state);
+        this.magicSplit_addBtn?.OnTouch(touches, state);
+        this.magicSplit_deleteBtn?.OnTouch(touches, state);
       }
       if (this.focusHorizontal || this.focusVertical)
         this.delete_button?.OnTouch(touches, state);
@@ -773,13 +907,26 @@ export default class Edge
       if (this.selected) {
         this.CalculateExtendButtonProps();
         this.CalculateAddButtonProps();
+
+        this.CalculateNewAddButtonProps()
+        this.CalculateNewDeleteButtonProps()
         this.extend_button?.PreRender(ctx);
         this.add_button?.PreRender(ctx);
+        
+        this.magicSplit_deleteBtn?.PreRender(ctx)
+      }
+      if(this.magicAdd){
+        this.magicSplit_addBtn?.PreRender(ctx)
+      }  
+      if(this.magicRemove){
+        this.magicSplit_deleteBtn?.PreRender(ctx)
       }
       this.delete_button = undefined;
     } else {
       this.extend_button = undefined;
       this.add_button = undefined;
+      this.magicSplit_addBtn = undefined;
+      this.magicSplit_deleteBtn = undefined;
       if (this.focusHorizontal || this.focusVertical) {
         this.CalculateDeleteButtonProps();
         this.delete_button?.PreRender(ctx);
@@ -845,10 +992,17 @@ export default class Edge
         ctx.strokeWeight(this.edgeWidth);
         ctx.line(this.start.x, this.start.y, this.end.x, this.end.y);
       }
-
+      if(this.magicAdd && (this.end.topEdge==undefined  || this.end.leftEdge==undefined))
+      {
+        this.magicSplit_addBtn?.Render(ctx);
+      }
+      if(this.magicRemove && (this.end.topEdge==undefined  || this.end.leftEdge==undefined))
+      {
+        this.magicSplit_deleteBtn?.Render(ctx);
+      }
       if (this.selected) {
-        this.extend_button?.Render(ctx);
         this.add_button?.Render(ctx);
+        this.extend_button?.Render(ctx);
         if (!this.disabled) this.delete_button?.Render(ctx);
       }
     }

@@ -1,7 +1,7 @@
-<div class="side-navbar active-nav d-flex justify-content-between flex-wrap flex-column bg-primary" id="sidebar">
+<div class="unselectable side-navbar active-nav d-flex justify-content-between flex-wrap flex-column bg-primary" id="sidebar">
   <ul class="nav text-white w-100">
     <li href="#" class=" top-full ">
-      <div class="table_heading">
+      <div class="table_heading" class="unselectable">
         <h2>Optical Character <b>Recognition</b> </h2>
         <hr>
         <p>Document Processing with automated data capture and extraction.</p>
@@ -9,9 +9,9 @@
           <img src="../../assets/images/file1.png" alt="">
         </div> -->
       </div>
-      <button  (click)="appService.autoTableCreation()" 
+      <button (click)="appService.autoTableCreation()" 
       *ngIf="appService.fileUploaded==true"
-       type="button" class="remove-image" style="padding: 8px ;border: none; color: white; text-transform:none">
+       type="button" class="remove-image unselectable" style="padding: 8px ;border: none; color: white; text-transform:none">
         Auto Table Detection
         <span class="image-title"></span>
       </button>
@@ -27,14 +27,22 @@
         Extract Table Table has no lines
         <span class="image-title"></span>
       </button>
-      <!-- <button 
+      <button (click)="appService.showMagicSplitIcons('Both')"
       *ngIf="appService.fileUploaded==true"
        type="button" class="remove-image" style="padding: 8px ;border: none; color: white; text-transform:none">
        Magic Split
         <span class="image-title"></span>
-      </button> -->
-      
-
+      </button>
+      <div *ngIf="appService.fileUploaded==true && appService.magicSplit">
+        <h6 class="mt-3">Selected Rows:</h6>
+        <div class="rowSelected">
+          <div class="circle-singleline" >3</div>
+        </div>
+        <h6 class="">Selected Colums:</h6>
+        <div class="columnSelected">
+          <div class="circle-singleline">2</div>
+        </div>
+      </div>
       <div class="properties" *ngIf="appService.fileUploaded==true">
         <!-- <ng-container>
           <div class="row">

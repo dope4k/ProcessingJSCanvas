@@ -1,7 +1,19 @@
-<div class="app_container">
+<style>
+    .unselectable {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+</style>
+<div class="app_container unselectable" >
   <header class="py-3 px-4 bg-primary">
     <div class="logo">
-      <a href="javascript:void(0)"><img src="../../assets/images/scan_file1.png" alt=""> OCR</a>
+      <a href="javascript:void(0)"><img src="../../assets/images/scan_file1.png" alt="">
+         OCR
+        </a>
     </div>
   </header>
   <div class="app-main">
@@ -10,9 +22,9 @@
         <a class="btn" id="menu-btn">
           <i class="fa-solid fa-angle-right"></i>
         </a>
-        <a>
+        <!-- <a>
           Annotate
-        </a>
+        </a> -->
       </nav>
       <app-processing-canvas></app-processing-canvas>
     </div>
