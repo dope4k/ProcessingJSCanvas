@@ -11,7 +11,7 @@ export class ApiService {
     var formData: any = new FormData(); 
     formData.append('image', file); 
     formData.append('data',JSON.stringify({"border_table":1,"borderless_table":0}))
-    return this.http.post('http://18.143.184.206:8000/table_split',formData)
+    return this.http.post('http://13.212.67.201:8000/table_split',formData)
   }
   extractTable(file:Object | undefined,data:Crop,scaleRatio:number,hybrid:boolean)
   {
@@ -23,6 +23,10 @@ export class ApiService {
       "scaleRatio":scaleRatio,"crops":[data.getCrop()]
     })
     )
-    return this.http.post(hybrid?'http://18.143.184.206:8000/hybrid_split':'http://18.143.184.206:8000/table_split',formData)
+    return this.http.post(hybrid?'http://13.212.67.201:8000/hybrid_split':'http://13.212.67.201:8000/table_split',formData)
+  }
+  magicSplit(formData : FormData)
+  {
+    return this.http.post('http://13.212.67.201:8000/magic_split_merge',formData)
   }
 }

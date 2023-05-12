@@ -43,6 +43,17 @@
           <div class="circle-singleline" *ngFor="let col of appService.selectedColumns">{{col}}</div>
         </div>
       </div>
+      <div>
+        <input type="checkbox" [(ngModel)]="appService.keepOriginalCells" (click)="appService.toggleKeepOriginalCellsCheck()" class="text-dark" id="506">
+        <label for="506" class="text-light" style="padding-left: 10px;">Keep Existing Lines</label>
+      </div>
+      <div *ngIf="appService.fileUploaded==true && appService.magicSplit"
+       class="d-flex align-items-center justify-content-between">
+        <button type="button" class="btn btn-secondary mt-2 me-2" (click)="appService.magicSplitFunctionality()"
+          ><span>Done</span> <i class="fa-solid fa-check"></i></button>
+        <button type="button" class="btn btn-outline-secondary mt-2 bg-transparent"
+          ><span>Cancel</span> <i class="fa-regular fa-trash-can"></i> </button>
+      </div>
       <div class="properties" *ngIf="appService.fileUploaded==true">
         <!-- <ng-container>
           <div class="row">
@@ -314,13 +325,7 @@
           <div>
             <input type="checkbox" [(ngModel)]="appService.keepExistingLines" (click)="appService.showKeepExistingLines()" class="text-dark" id="506">
             <label for="506" class="text-light" style="padding-left: 10px;">Keep Existing Lines</label>
-          </div>
-          <div class="d-flex align-items-center justify-content-between">
-            <button type="button" class="btn btn-secondary mt-2 me-2"
-              (click)="appService.tableWRTRowCol()"><span>Done</span> <i class="fa-solid fa-check"></i></button>
-            <button type="button" class="btn btn-outline-secondary mt-2 bg-transparent"
-              (click)="appService.cancelAddProp() " ><span>Cancel</span> <i class="fa-regular fa-trash-can"></i> </button>
-          </div>
+          </div>      
           <div>
           </div>
         </div> -->

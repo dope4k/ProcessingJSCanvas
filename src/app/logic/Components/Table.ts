@@ -33,6 +33,7 @@ export default class Table
   edges: Edge[];
   nodes: Node[];
 
+  mouseMoveInitial?: Vector;
   extents?: Node[];
 
   bbox: number[] = [0, 0, 0, 0];
@@ -339,8 +340,6 @@ export default class Table
   }
 
   OnMouseWheel(position: Vector, scroll: number): void {
-    if (this.collider.PointCollision(position))
-      this.Scale(-scroll * 0.1, -scroll * 0.1, position.x, position.y);
   }
 
   OnMouseButton(
@@ -353,6 +352,8 @@ export default class Table
     }
     if (button === 'left' && state === 'PRESSED' && this.extents) {
       if (this.collider.PointCollision(position)) {
+        this.focus=true;
+        this.mouseMoveInitial=position;
         let i = 0;
         for (const extentPoint of this.extents) {
           let [offsetX, offsetY] = this.GetExtentOffset(i);
@@ -364,7 +365,6 @@ export default class Table
               extentPoint.y + extentPoint.radius + offsetY,
             ])
           ) {
-            this.focus = true;
             this.dragExtentIndex = i;
             return false;
           }
@@ -374,6 +374,7 @@ export default class Table
     }
     if (state === 'RELEASED') {
       this.dragExtentIndex = undefined;
+      this.mouseMoveInitial= undefined
     }
     return true;
   }
@@ -437,6 +438,16 @@ export default class Table
       }
       Renderer.Render();
     }
+    
+    else if (this.focus) {
+      if (Context.ShiftDown() && this.mouseMoveInitial) {
+        for (const node of this.nodes) {
+          node.x += position.x - this.mouseMoveInitial.x;
+          node.y += position.y - this.mouseMoveInitial.y;
+        }
+        this.mouseMoveInitial = position;
+        Renderer.Render();
+      }}
   }
 
   OnTouch(touches: Touch[], state: 'STARTED' | 'MOVED' | 'ENDED'): boolean {

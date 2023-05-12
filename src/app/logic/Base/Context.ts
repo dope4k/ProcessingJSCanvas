@@ -156,7 +156,7 @@ export default class Context {
     this.__element = this.ctx.createCanvas(this.width, this.height);
     if (this.element_id) this.element.parent(this.element_id);
     this.__renderer?.AddRenderObject(this.selectionTool);
-    this.ctx.frameRate(45);
+    this.ctx.frameRate(60);
   }
 
   BindOnMouseMove(obj: OnMouseMove) {
