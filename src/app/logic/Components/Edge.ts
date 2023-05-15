@@ -10,7 +10,6 @@ import Renderer, { Renderable } from '../Base/Renderer';
 import Button from './Button';
 import Node from './Node';
 import Table from './Table';
-import { AppServiceService } from 'src/app/app-service.service';
 
 export default class Edge
   implements
@@ -159,9 +158,7 @@ export default class Edge
     nodeB: Node,
     edgeWidth: number = 3,
     color = [0, 0, 0, 255],
-    highlightColor = [128, 128, 128, 255],
-    private appService?: AppServiceService
-  ) {
+    highlightColor = [128, 128, 128, 255]) {
     this.table = table;
     this.collider = new Collider(this);
 

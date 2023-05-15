@@ -74,7 +74,7 @@ export default class SelectionTool
           this.dragEnd = undefined;
           this.selectionID++;
           Renderer.Render();
-        } else {
+        } else if (position.x >= 0 && position.y >= 0) {
           Context.context.OnSelection();
         }
       }

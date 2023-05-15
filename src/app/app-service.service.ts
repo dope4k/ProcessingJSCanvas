@@ -82,7 +82,7 @@ export class AppServiceService {
   }
   //returns current zoom of canvas
   getZoom() {
-    console.log(Context.context);
+    console.log(this.context);
     console.log(this.displayAllRowsColumnsSelected());
     
     // let table= Context.context?.OnKeyDispatchers[0];
@@ -584,7 +584,7 @@ export class AppServiceService {
     else this.keepOriginalCells=true;
   }
 
-  getRowColumnCropsForMagicSplit(table: Table, selectedEdgesRows:any, selectedEdgesColumns:any,
+  private getRowColumnCropsForMagicSplit(table: Table, selectedEdgesRows:any, selectedEdgesColumns:any,
     cropsArrayRows:any,cropsArrayColumns:any)
   {
     for(let x=0;x<selectedEdgesRows.length;x++)
@@ -634,198 +634,10 @@ export class AppServiceService {
     return { rowsCrop: rowsCrop, colsCrop: colsCrop}
   }
 
-  magicSplitFunctionality()
-  {
-
-    //select the table 
-    let table= Context?.context?.OnKeyDispatchers[0];
-    let cropsArrayRows: any=[]
-    let cropsArrayColumns: any=[]
-    var tableCopy: Table;
-    let colsCrop:any=[];
-    let rowsCrop:any=[]
-    if(table)
-    {
-
-      [rowsCrop,colsCrop]=Object.values(this.getRowColumnCropsForMagicSplit((table as Table),this.selectedEdgesRows,this.selectedEdgesColumns,
-      cropsArrayRows,cropsArrayColumns))
-      //find selected row edges
-      // for(let x=0;x<this.selectedEdgesRows.length;x++)
-      // {
-      //   let crops= new Crop(
-      //     this.selectedEdgesRows[x].x1,
-      //     this.selectedEdgesRows[x].y1,
-      //     (table as Table)?.bbox[2],
-      //     this.selectedEdgesRows[x].y2)
-      //   cropsArrayRows.push(crops.getCrop())
-      // }
-      //find selected column edges
-      // for(let x=0;x<this.selectedEdgesColumns.length;x++)
-      // {
-      //   let crops= new Crop(
-      //     this.selectedEdgesColumns[x].x1,
-      //     this.selectedEdgesColumns[x].y1,
-      //     this.selectedEdgesColumns[x].x2,
-      //     (table as any).bbox[3])
-      //   cropsArrayColumns.push(crops.getCrop())
-      // }
-
-      //make a copy of table for comparing edges with response
-      tableCopy=(table as Table)
-      tableCopy.CalculateBbox()
-
-      //remove the old table
-      this.context?.RemoveObject((table as Table)?.id) 
-    }
-
-    //making row and column crops
-
-    // let colsCrop=[];
-    // for(let x in cropsArrayColumns)
-    // {
-    //   let obj={
-    //     x1: Math.round(cropsArrayColumns[x][0]/this.getScaleRatio()),
-    //     y1: Math.round(cropsArrayColumns[x][1]/this.getScaleRatio()),
-    //     x2: Math.round(cropsArrayColumns[x][2]/this.getScaleRatio()),
-    //     y2: Math.round(cropsArrayColumns[x][3]/this.getScaleRatio()),
-    //     height:Math.round((cropsArrayColumns[x][3]-cropsArrayColumns[x][1])/this.getScaleRatio()),
-    //     width: Math.round((cropsArrayColumns[x][2]-cropsArrayColumns[x][0])/this.getScaleRatio()),
-    //   }
-    //   colsCrop.push(obj)
-    // }
-    // let rowsCrop=[];
-    // for(let x in cropsArrayRows)
-    // {
-    //   let obj={
-    //     x1: (cropsArrayRows[x][0]/this.getScaleRatio()),
-    //     y1: Math.round(cropsArrayRows[x][1]/this.getScaleRatio()),
-    //     x2: Math.round(cropsArrayRows[x][2]/this.getScaleRatio()),
-    //     y2: Math.round(cropsArrayRows[x][3]/this.getScaleRatio()),
-    //     height: Math.round((cropsArrayRows[x][3]-cropsArrayRows[x][1])/this.getScaleRatio()),
-    //     width: Math.round((cropsArrayRows[x][2]-cropsArrayRows[x][0])/this.getScaleRatio()),
-    //   }
-    //   rowsCrop.push(obj)
-    // }
-
-
-    //crop variables
-    //+-20 for the mouse detection on border of table
-    let tabelCropObj = this.getTableCrop((table as Table));
-
-    //calculating the xcords and ycords from table
-    let { xCords, yCords } = this.getXYCordsFromTableAndApplyScaleRatio((table as Table));
-    
-
-    let formData = new FormData();
-    formData.append('image',(this.fileToSend as string))
-
-
-    //magic split final payload
-    let magicSplitPayloadData= {
-      "border_table":0,
-      "borderless_table":1,
-      "scaleRatio":1,
-      "crops":tabelCropObj,
-      "rows": rowsCrop,
-      "cols": colsCrop,
-      "appliedTo": [],
-      "keepOriginal":this.keepOriginalCells?1:0,
-      "xCords":xCords,
-      "yCords":yCords
-    }
-    formData.append('data', JSON.stringify(magicSplitPayloadData))
-
-
-
-    this.apiService.magicSplit(formData).subscribe(data=>{
-      //response coordinates  
-      let xCordsR = (data as any)[0]?.xCords;
-      let yCordsR = (data as any)[0]?.yCords;
-     
-      //have to remove this . this thing will go to haider side
-      if(magicSplitPayloadData.cols.length==0)
-      {
-        yCordsR=yCords;
-      }
-      else if(magicSplitPayloadData.rows.length==0)
-      {
-        xCordsR=xCords;
-      }
-
-      //remove close coords - difference of 6  
-      xCordsR= this.removeCloseCords(xCordsR)
-      yCordsR= this.removeCloseCords(yCordsR)
-      
-      //apply scale on the coordinates
-      for(let x in xCordsR)
-      {
-        xCordsR[x] = Math.round(xCordsR[x]* this.getScaleRatio())
-      }
-      for(let x in yCordsR)
-      {
-        yCordsR[x] = Math.round(yCordsR[x]* this.getScaleRatio())
-      }
-
-      //again remove close cords and sort
-      xCordsR= this.removeCloseCords(xCordsR)
-      yCordsR= this.removeCloseCords(yCordsR)
-      xCordsR = this.removeDuplicateCordsAndSort(xCordsR);
-      yCordsR = this.removeDuplicateCordsAndSort(yCordsR);
-      
-      let cells: Cell[] = [];
-      
-      cells=this.addNew1x1Cells(cells,xCordsR,yCordsR,1)
-
-      //deleting newcell check because we are not using already made cells
-      for(let x in cells)
-      {
-        delete cells[x].isNewCell
-      }
-
-
-      let table = new Table()
-      table.autoTableCreation(cells,
-        xCordsR[0],
-        yCordsR[0],
-        xCordsR[(xCordsR as any).length-1],
-        yCordsR[(yCordsR as any).length-1],
-        xCordsR,
-        yCordsR)
-      if(this.keepOriginalCells)
-      {
-        //modify the edges and then display the table
-        //update bbox of new table and its edges
-        table.edges.forEach(newEdge=>{
-          newEdge.CalculateBBOX()
-        })
-        table.CalculateBbox()
-        //check if bbox of old edge is in range of new edge then make the new edge property disabled
-        //= old edge property disabled
-        for(let xx=0;xx< tableCopy.edges.length;xx++)
-        {
-          for(let yy=0;yy< table.edges.length;yy++)
-          {
-            if(this.isCloseNumbers(tableCopy.edges[xx].bbox[0],table.edges[yy].bbox[0]) &&
-              this.isCloseNumbers(tableCopy.edges[xx].bbox[1],table.edges[yy].bbox[1]) &&
-              table.edges[yy].disabled==false && 
-              table.edges[yy].isVertical==tableCopy.edges[xx].isVertical &&
-              table.edges[yy].isHorizontal==tableCopy.edges[xx].isHorizontal)
-            {
-              table.edges[yy].disabled=tableCopy.edges[xx].disabled;
-              break;
-            }
-          }
-        }
-      }
-      //add the table to canvas
-      Context.context?.AddObject(table)
-
-    })    
-  }
-
   private getXYCordsFromTableAndApplyScaleRatio(table: Table) {
-    let xCords = this.getXYCords((table as Table)).xCords;
-    let yCords = this.getXYCords((table as Table)).yCords;
+    let xCords:any;
+    let yCords:any;
+    [xCords,yCords]=Object.values(this.getXYCords((table as Table)))
 
     //apply scale on the xcords and ycords
     for (let x in xCords) {
@@ -838,6 +650,7 @@ export class AppServiceService {
   }
 
   private getTableCrop(table: Table) {
+    //+-20 for the mouse detection on border of table
     (table as Table).CalculateBbox();
     let x1 = (table as Table).bbox[0] + 20;
     let y1 = (table as Table).bbox[1] + 20;
@@ -866,4 +679,230 @@ export class AppServiceService {
   
     return result;
   }
+
+  selectedCells:any=[];
+  private getSelectedCellCrops()
+  {
+    let table = (Context?.context?.OnKeyDispatchers[0] as Table);
+    if(!table) return []
+    else
+    {
+      let nodes= table.nodes;
+      let edges= table.edges;
+      let x11;
+      let y11;
+      let x22;
+      let y22;
+      if(this.keepOriginalCells==true)
+      {
+        let x1;
+        let y1;
+        let selectedCrops:any=[]
+        for(let x=0;x<nodes.length;x++)
+        {
+          if(nodes[x].selectedCell==true)
+          {
+            x1=nodes[x].bbox[0];
+            y1=nodes[x].bbox[1];
+            break;
+          }
+        }
+        for(let x=0;x<edges.length;x++)
+        {
+          if(edges[x].isVertical &&
+             edges[x].bbox[0]+2==x1 &&
+             edges[x].bbox[1]+5==y1)
+          {
+            x11=edges[x].bbox[0];
+            y11=edges[x].bbox[1];
+            break;
+          }
+        }
+        for(let x=0;x<edges.length;x++)
+        {
+          if(edges[x].isHorizontal &&
+             edges[x].bbox[0]+5==x1 &&
+             edges[x].bbox[1]+2==y1)
+          {
+            x22=edges[x].bbox[2];
+            y22=edges[x].bbox[3];
+            break;
+          }
+        }
+        
+        let obj={
+          x1: x11,
+          y1: y11,
+          x2: x22,
+          y2: y22
+        }
+        let check=false
+        for(let x=0;x<selectedCrops.length;x++)
+        {
+          if(selectedCrops[x].x1==obj.x1 && selectedCrops[x].y1==obj.y1 &&
+            selectedCrops[x].x2==obj.x2 && selectedCrops[x].y2==obj.y2)
+            {
+              check=true;
+              break;
+            }
+        }
+        if(check==false)
+        {
+          selectedCrops.push(obj)
+        }
+        return selectedCrops
+      }
+      else if(this.keepOriginalCells==false)
+      {
+        return []
+      }
+    }
+    return []
+  }
+
+  magicSplitFunctionality() {
+
+    //select the table 
+    let table = Context?.context?.OnKeyDispatchers[0];
+    let cropsArrayRows: any = []
+    let cropsArrayColumns: any = []
+    var tableCopy: Table;
+    let colsCrop: any = [];
+    let rowsCrop: any = []
+    if (table) {
+      //find selected row and column crops
+      [rowsCrop, colsCrop] = Object.values(this.getRowColumnCropsForMagicSplit((table as Table), this.selectedEdgesRows, this.selectedEdgesColumns,
+        cropsArrayRows, cropsArrayColumns))
+
+      //make a copy of table for comparing edges with response
+      tableCopy = (table as Table)
+      tableCopy.CalculateBbox()
+
+      //remove the old table
+      this.context?.RemoveObject((table as Table)?.id)
+
+      //crop variables
+      let tabelCropObj = this.getTableCrop((table as Table));
+
+      //calculating the xcords and ycords from table
+      let { xCords, yCords } = this.getXYCordsFromTableAndApplyScaleRatio((table as Table));
+
+      //magic split final payload
+      let magicSplitPayloadData = {
+        "border_table": 0,
+        "borderless_table": 1,
+        "scaleRatio": 1,
+        "crops": tabelCropObj,
+        "rows": rowsCrop,
+        "cols": colsCrop,
+        "appliedTo": [],
+        "keepOriginal": this.keepOriginalCells ? 1 : 0,
+        "xCords": xCords,
+        "yCords": yCords
+      }
+
+      this.selectedCells=this.getSelectedCellCrops()
+      console.log(this.selectedCells);
+      return;
+
+      let formData = new FormData();
+      formData.append('image', (this.fileToSend as string))
+      formData.append('data', JSON.stringify(magicSplitPayloadData))
+
+      this.apiService.magicSplit(formData).subscribe(data => {
+        //response coordinates  
+        let xCordsR = (data as any)[0]?.xCords;
+        let yCordsR = (data as any)[0]?.yCords;
+
+        //have to remove this . this thing will go to haider side
+        if (magicSplitPayloadData.cols.length == 0) {
+          yCordsR = yCords;
+        }
+        else if (magicSplitPayloadData.rows.length == 0) {
+          xCordsR = xCords;
+        }
+
+        //remove close coords - difference of 6  
+        xCordsR = this.removeCloseCords(xCordsR)
+        yCordsR = this.removeCloseCords(yCordsR)
+
+        //apply scale on the coordinates
+        for (let x in xCordsR) {
+          xCordsR[x] = Math.round(xCordsR[x] * this.getScaleRatio())
+        }
+        for (let x in yCordsR) {
+          yCordsR[x] = Math.round(yCordsR[x] * this.getScaleRatio())
+        }
+
+        //again remove close cords and sort
+        xCordsR = this.removeCloseCords(xCordsR)
+        yCordsR = this.removeCloseCords(yCordsR)
+        xCordsR = this.removeDuplicateCordsAndSort(xCordsR);
+        yCordsR = this.removeDuplicateCordsAndSort(yCordsR);
+
+        let cells: Cell[] = [];
+
+        cells = this.addNew1x1Cells(cells, xCordsR, yCordsR, 1)
+
+        //deleting newcell check because we are not using already made cells
+        for (let x in cells) {
+          delete cells[x].isNewCell
+        }
+
+
+        let table = new Table()
+        table.autoTableCreation(cells,
+          xCordsR[0],
+          yCordsR[0],
+          xCordsR[(xCordsR as any).length - 1],
+          yCordsR[(yCordsR as any).length - 1],
+          xCordsR,
+          yCordsR)
+        if (this.keepOriginalCells) {
+          //modify the edges and then display the table
+          //update bbox of new table and its edges
+          table.edges.forEach(newEdge => {
+            newEdge.CalculateBBOX()
+          })
+          table.CalculateBbox()
+          //check if bbox of old edge is in range of new edge then make the new edge property disabled
+          //= old edge property disabled
+          for (let xx = 0; xx < tableCopy.edges.length; xx++) {
+            for (let yy = 0; yy < table.edges.length; yy++) {
+              if (this.isCloseNumbers(tableCopy.edges[xx].bbox[0], table.edges[yy].bbox[0]) &&
+                this.isCloseNumbers(tableCopy.edges[xx].bbox[1], table.edges[yy].bbox[1]) &&
+                table.edges[yy].disabled == false &&
+                table.edges[yy].isVertical == tableCopy.edges[xx].isVertical &&
+                table.edges[yy].isHorizontal == tableCopy.edges[xx].isHorizontal) {
+                table.edges[yy].disabled = tableCopy.edges[xx].disabled;
+                break;
+              }
+            }
+          }
+        }
+        //add the table to canvas
+        Context.context?.AddObject(table)
+
+      })
+    }
+  }
+
+  selectedEdges:any=[]
+  
+  displaySelectedEdges()
+  {
+    const filterUniqueObjects = (array:any) => {
+      const seenIds = new Set();
+      return array.filter((obj:any) => {
+        if (seenIds.has(obj.id)) {
+          return false; // Filter out duplicates
+        }
+        seenIds.add(obj.id);
+        return true;
+      });
+    };
+    this.selectedEdges=filterUniqueObjects(this.selectedEdges)
+    console.log(this.selectedEdges);
+  }
+  
 }
