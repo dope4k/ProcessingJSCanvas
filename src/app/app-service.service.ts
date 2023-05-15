@@ -584,47 +584,27 @@ export class AppServiceService {
     else this.keepOriginalCells=true;
   }
 
-  magicSplitFunctionality()
+  getRowColumnCropsForMagicSplit(table: Table, selectedEdgesRows:any, selectedEdgesColumns:any,
+    cropsArrayRows:any,cropsArrayColumns:any)
   {
-
-    //select the table 
-    let table= Context?.context?.OnKeyDispatchers[0];
-    let cropsArrayRows=[]
-    let cropsArrayColumns=[]
-    var tableCopy: Table;
-
-    if(table)
+    for(let x=0;x<selectedEdgesRows.length;x++)
     {
-      //find selected row edges
-      for(let x=0;x<this.selectedEdgesRows.length;x++)
-      {
-        let crops= new Crop(
-          this.selectedEdgesRows[x].x1,
-          this.selectedEdgesRows[x].y1,
-          (table as Table)?.bbox[2],
-          this.selectedEdgesRows[x].y2)
-        cropsArrayRows.push(crops.getCrop())
-      }
-      //find selected column edges
-      for(let x=0;x<this.selectedEdgesColumns.length;x++)
-      {
-        let crops= new Crop(
-          this.selectedEdgesColumns[x].x1,
-          this.selectedEdgesColumns[x].y1,
-          this.selectedEdgesColumns[x].x2,
-          (table as any).bbox[3])
-        cropsArrayColumns.push(crops.getCrop())
-      }
-
-      //make a copy of table for comparing edges with response
-      tableCopy=(table as Table)
-      tableCopy.CalculateBbox()
-
-      //remove the old table
-      this.context?.RemoveObject((table as Table)?.id) 
+      let crops= new Crop(
+        selectedEdgesRows[x].x1,
+        selectedEdgesRows[x].y1,
+        (table as Table)?.bbox[2],
+        selectedEdgesRows[x].y2)
+      cropsArrayRows.push(crops.getCrop())
     }
-
-    //making row and column crops
+    for(let x=0;x<selectedEdgesColumns.length;x++)
+    {
+      let crops= new Crop(
+        selectedEdgesColumns[x].x1,
+        selectedEdgesColumns[x].y1,
+        selectedEdgesColumns[x].x2,
+        (table as any).bbox[3])
+      cropsArrayColumns.push(crops.getCrop())
+    }
     let colsCrop=[];
     for(let x in cropsArrayColumns)
     {
@@ -651,45 +631,96 @@ export class AppServiceService {
       }
       rowsCrop.push(obj)
     }
+    return { rowsCrop: rowsCrop, colsCrop: colsCrop}
+  }
+
+  magicSplitFunctionality()
+  {
+
+    //select the table 
+    let table= Context?.context?.OnKeyDispatchers[0];
+    let cropsArrayRows: any=[]
+    let cropsArrayColumns: any=[]
+    var tableCopy: Table;
+    let colsCrop:any=[];
+    let rowsCrop:any=[]
+    if(table)
+    {
+
+      [rowsCrop,colsCrop]=Object.values(this.getRowColumnCropsForMagicSplit((table as Table),this.selectedEdgesRows,this.selectedEdgesColumns,
+      cropsArrayRows,cropsArrayColumns))
+      //find selected row edges
+      // for(let x=0;x<this.selectedEdgesRows.length;x++)
+      // {
+      //   let crops= new Crop(
+      //     this.selectedEdgesRows[x].x1,
+      //     this.selectedEdgesRows[x].y1,
+      //     (table as Table)?.bbox[2],
+      //     this.selectedEdgesRows[x].y2)
+      //   cropsArrayRows.push(crops.getCrop())
+      // }
+      //find selected column edges
+      // for(let x=0;x<this.selectedEdgesColumns.length;x++)
+      // {
+      //   let crops= new Crop(
+      //     this.selectedEdgesColumns[x].x1,
+      //     this.selectedEdgesColumns[x].y1,
+      //     this.selectedEdgesColumns[x].x2,
+      //     (table as any).bbox[3])
+      //   cropsArrayColumns.push(crops.getCrop())
+      // }
+
+      //make a copy of table for comparing edges with response
+      tableCopy=(table as Table)
+      tableCopy.CalculateBbox()
+
+      //remove the old table
+      this.context?.RemoveObject((table as Table)?.id) 
+    }
+
+    //making row and column crops
+
+    // let colsCrop=[];
+    // for(let x in cropsArrayColumns)
+    // {
+    //   let obj={
+    //     x1: Math.round(cropsArrayColumns[x][0]/this.getScaleRatio()),
+    //     y1: Math.round(cropsArrayColumns[x][1]/this.getScaleRatio()),
+    //     x2: Math.round(cropsArrayColumns[x][2]/this.getScaleRatio()),
+    //     y2: Math.round(cropsArrayColumns[x][3]/this.getScaleRatio()),
+    //     height:Math.round((cropsArrayColumns[x][3]-cropsArrayColumns[x][1])/this.getScaleRatio()),
+    //     width: Math.round((cropsArrayColumns[x][2]-cropsArrayColumns[x][0])/this.getScaleRatio()),
+    //   }
+    //   colsCrop.push(obj)
+    // }
+    // let rowsCrop=[];
+    // for(let x in cropsArrayRows)
+    // {
+    //   let obj={
+    //     x1: (cropsArrayRows[x][0]/this.getScaleRatio()),
+    //     y1: Math.round(cropsArrayRows[x][1]/this.getScaleRatio()),
+    //     x2: Math.round(cropsArrayRows[x][2]/this.getScaleRatio()),
+    //     y2: Math.round(cropsArrayRows[x][3]/this.getScaleRatio()),
+    //     height: Math.round((cropsArrayRows[x][3]-cropsArrayRows[x][1])/this.getScaleRatio()),
+    //     width: Math.round((cropsArrayRows[x][2]-cropsArrayRows[x][0])/this.getScaleRatio()),
+    //   }
+    //   rowsCrop.push(obj)
+    // }
 
 
     //crop variables
     //+-20 for the mouse detection on border of table
-    (table as Table).CalculateBbox();
-    let x1=(table as Table).bbox[0]+20;
-    let y1=(table as Table).bbox[1]+20;
-    let x2=(table as Table).bbox[2]-x1-20;
-    let y2=(table as Table).bbox[3]-y1-20;
-    
-    //making full table Crop & applying scale
-    let tabelCropObj= 
-      [[
-      Math.round(x1/this.getScaleRatio()),
-      Math.round(y1/this.getScaleRatio()),
-      Math.round(x2/this.getScaleRatio()),
-      Math.round(y2/this.getScaleRatio())
-    ]]
+    let tabelCropObj = this.getTableCrop((table as Table));
 
     //calculating the xcords and ycords from table
-    let xCords= this.getXYCords((table as Table)).xCords;
-    let yCords= this.getXYCords((table as Table)).yCords;
+    let { xCords, yCords } = this.getXYCordsFromTableAndApplyScaleRatio((table as Table));
     
-    //apply scale on the xcords and ycords
-    for(let x in xCords)
-    {
-      xCords[x]=Math.round(xCords[x]/this.getScaleRatio())
-    }
-    for(let x in yCords)
-    {
-      yCords[x]=Math.round(yCords[x]/this.getScaleRatio())
-    }
-    
+
     let formData = new FormData();
     formData.append('image',(this.fileToSend as string))
 
 
     //magic split final payload
-    //applied to is empty here
     let magicSplitPayloadData= {
       "border_table":0,
       "borderless_table":1,
@@ -703,6 +734,9 @@ export class AppServiceService {
       "yCords":yCords
     }
     formData.append('data', JSON.stringify(magicSplitPayloadData))
+
+
+
     this.apiService.magicSplit(formData).subscribe(data=>{
       //response coordinates  
       let xCordsR = (data as any)[0]?.xCords;
@@ -787,6 +821,37 @@ export class AppServiceService {
       Context.context?.AddObject(table)
 
     })    
+  }
+
+  private getXYCordsFromTableAndApplyScaleRatio(table: Table) {
+    let xCords = this.getXYCords((table as Table)).xCords;
+    let yCords = this.getXYCords((table as Table)).yCords;
+
+    //apply scale on the xcords and ycords
+    for (let x in xCords) {
+      xCords[x] = Math.round(xCords[x] / this.getScaleRatio());
+    }
+    for (let x in yCords) {
+      yCords[x] = Math.round(yCords[x] / this.getScaleRatio());
+    }
+    return { xCords, yCords };
+  }
+
+  private getTableCrop(table: Table) {
+    (table as Table).CalculateBbox();
+    let x1 = (table as Table).bbox[0] + 20;
+    let y1 = (table as Table).bbox[1] + 20;
+    let x2 = (table as Table).bbox[2] - x1 - 20;
+    let y2 = (table as Table).bbox[3] - y1 - 20;
+
+    //making full table Crop & applying scale
+    let tabelCropObj = [[
+      Math.round(x1 / this.getScaleRatio()),
+      Math.round(y1 / this.getScaleRatio()),
+      Math.round(x2 / this.getScaleRatio()),
+      Math.round(y2 / this.getScaleRatio())
+    ]];
+    return tabelCropObj;
   }
 
   removeCloseCords(cords:number [])

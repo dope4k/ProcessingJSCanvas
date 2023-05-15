@@ -233,6 +233,7 @@ export default class Table
   autoTableCreation(cells:Cell[],minX:number,minY:number,maxX:number, maxY:number,
     xCordsCells: number[],yCordsCells: number[])
   {
+    //update this function so that it caters if new cells are added on top or left or bottom or right
     this.cells=cells;
     for(let x=0;x<cells.length;x++)
     {
