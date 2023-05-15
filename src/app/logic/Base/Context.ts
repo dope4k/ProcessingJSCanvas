@@ -255,7 +255,7 @@ export default class Context {
     button: string,
     state: 'PRESSED' | 'RELEASED' | 'CLICKED'
   ) {    
-    if (!this.selectionMode) {
+      let stopPropagation = false;
       const length = this.OnMouseButtonDispatchers.length;
       for (
         let i = 0;
@@ -268,13 +268,13 @@ export default class Context {
             button,
             state
           )
-        )
+        ){
+          stopPropagation=true;
           break;
+        }
       }
-    }
-     else {
+      if(!stopPropagation)
       this.selectionTool.OnMouseButton(position, button, state);
-    }
   }
   OnMouseMove(position: Vector, button?: string) {
     if (!this.selectionMode) {

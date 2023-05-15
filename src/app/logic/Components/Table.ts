@@ -437,6 +437,22 @@ export default class Table
         node.x += movementsX[i];
         node.y += movementsY[i++];
       }
+      this.edges.forEach((edge)=>{
+        edge.magicSplitActive=true;
+      })
+      //loop through all edges of the table
+      this.edges.forEach((edge)=>{
+        //find the top most and left most edges 
+        if(edge.end.topEdge==undefined || edge.end.leftEdge==undefined)
+            {
+              //Flag for magic split icons 
+              edge.magicAdd=true
+              edge.magicRemove=false;
+              //Displays the Magic Split add icons
+              edge.InitNewAddButton();  
+              // edge.InitNewDeleteButton()
+            }
+      })  
       Renderer.Render();
     }
     

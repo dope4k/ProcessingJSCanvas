@@ -785,10 +785,12 @@ export default class Edge
     state: 'PRESSED' | 'RELEASED' | 'CLICKED'
   ): boolean {
     if(this.magicAdd){
-      this.magicSplit_addBtn?.OnMouseButton(position, button, state);
+      let returnBool = this.magicSplit_addBtn?.OnMouseButton(position, button, state);
+      if(!returnBool) return false;
     }
     if(this.magicRemove){
-      this.magicSplit_deleteBtn?.OnMouseButton(position, button, state);
+      let returnBool =this.magicSplit_deleteBtn?.OnMouseButton(position, button, state);
+      if(!returnBool) return false;
     }
     if(this.magicSplitActive==true)
     {
@@ -864,6 +866,8 @@ export default class Edge
         this.Move(position);
       }
     }
+    this.magicSplit_addBtn?.OnMouseMove(position, button);
+    this.magicSplit_deleteBtn?.OnMouseMove(position, button);
   }
 
   OnKey(button: string, state: 'PRESSED' | 'RELEASED' | 'TYPED'): void {
@@ -909,8 +913,6 @@ export default class Edge
         this.CalculateNewDeleteButtonProps()
         this.extend_button?.PreRender(ctx);
         this.add_button?.PreRender(ctx);
-        
-        this.magicSplit_deleteBtn?.PreRender(ctx)
       }
       if(this.magicAdd){
         this.magicSplit_addBtn?.PreRender(ctx)
@@ -932,7 +934,6 @@ export default class Edge
   }
 
   Render(ctx: p5): void {
-    if (Context.context.selectionMode) {
       if (
         this.isHorizontal &&
         this.start.bottomEdge &&
@@ -960,7 +961,6 @@ export default class Edge
         ctx.strokeWeight(this.edgeWidth);
         ctx.line(this.start.x, this.start.y, this.end.x, this.end.y);
       }
-    } else {
       if (this.disabled) {
         if (this.focusHorizontal || this.focusVertical) {
           if (this.selected) ctx.stroke(64, 64, 64, 255);
@@ -1001,7 +1001,6 @@ export default class Edge
         this.add_button?.Render(ctx);
         this.extend_button?.Render(ctx);
         if (!this.disabled) this.delete_button?.Render(ctx);
-      }
     }
   }
 }
