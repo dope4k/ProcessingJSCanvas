@@ -83,7 +83,6 @@ export class AppServiceService {
   //returns current zoom of canvas
   getZoom() {
     console.log(this.context);
-    console.log(this.displayAllRowsColumnsSelected());
     
     // let table= Context.context?.OnKeyDispatchers[0];
     // (table as any).edges.forEach((edge:Edge)=>{
@@ -683,78 +682,76 @@ export class AppServiceService {
   selectedCells:any=[];
   private getSelectedCellCrops()
   {
-    let table = (Context?.context?.OnKeyDispatchers[0] as Table);
-    if(!table) return []
-    else
-    {
-      let nodes= table.nodes;
-      let edges= table.edges;
+    // this.context?.Render()
+    let table = this.context?.OnKeyDispatchers[0];
+    if (!table) table = (this.context?.OnSelectionDispatchers[0] as any);
+    if (!table) return []
+    else {
+      let nodes = (table as Table).nodes;
+      let edges = (table as Table).edges;
       let x11;
       let y11;
       let x22;
       let y22;
-      if(this.keepOriginalCells==true)
-      {
-        let x1;
-        let y1;
-        let selectedCrops:any=[]
-        for(let x=0;x<nodes.length;x++)
-        {
-          if(nodes[x].selectedCell==true)
-          {
-            x1=nodes[x].bbox[0];
-            y1=nodes[x].bbox[1];
-            break;
-          }
-        }
-        for(let x=0;x<edges.length;x++)
-        {
-          if(edges[x].isVertical &&
-             edges[x].bbox[0]+2==x1 &&
-             edges[x].bbox[1]+5==y1)
-          {
-            x11=edges[x].bbox[0];
-            y11=edges[x].bbox[1];
-            break;
-          }
-        }
-        for(let x=0;x<edges.length;x++)
-        {
-          if(edges[x].isHorizontal &&
-             edges[x].bbox[0]+5==x1 &&
-             edges[x].bbox[1]+2==y1)
-          {
-            x22=edges[x].bbox[2];
-            y22=edges[x].bbox[3];
-            break;
-          }
-        }
-        
-        let obj={
-          x1: x11,
-          y1: y11,
-          x2: x22,
-          y2: y22
-        }
-        let check=false
-        for(let x=0;x<selectedCrops.length;x++)
-        {
-          if(selectedCrops[x].x1==obj.x1 && selectedCrops[x].y1==obj.y1 &&
-            selectedCrops[x].x2==obj.x2 && selectedCrops[x].y2==obj.y2)
-            {
-              check=true;
+      let x1;
+      let y1;
+      let selectedCrops: any = []
+      //code gives all cells as seperate crops
+      for (let x = 0; x < nodes.length; x++) {
+        if (nodes[x].selectedCell == true) {
+          x1 = nodes[x].bbox[0];
+          y1 = nodes[x].bbox[1];
+          let checkk = false;
+          for (let x in selectedCrops) {
+            if (selectedCrops[x].x1 == x1 && selectedCrops[x].y1 == y1) {
+              checkk = true;
               break;
             }
+          }
+          if (checkk == true) {
+            continue;
+          }
+          for (let x = 0; x < edges.length; x++) {
+            if (edges[x].isVertical &&
+              edges[x].start.bbox[0] == x1 &&
+              edges[x].start.bbox[1] == y1) {
+              x11 = edges[x].bbox[0];
+              y11 = edges[x].bbox[1];
+              x22 = edges[x].bbox[2];
+              y22 = edges[x].bbox[3];
+              break;
+            }
+          }
+          let obj = {
+            x1: x11,
+            y1: y11,
+            x2: x22,
+            y2: y22
+          }
+          let check = false
+          for (let x = 0; x < selectedCrops.length; x++) {
+            if (selectedCrops[x].x1 == obj.x1 && selectedCrops[x].y1 == obj.y1 &&
+              selectedCrops[x].x2 == obj.x2 && selectedCrops[x].y2 == obj.y2) {
+              check = true;
+              break;
+            }
+          }
+          if (check == false) {
+            selectedCrops.push(obj)
+          }
         }
-        if(check==false)
-        {
-          selectedCrops.push(obj)
-        }
+      }
+      if (this.keepOriginalCells == true) {
+        //write code here for making blocks for selected cell
+        //first select node
+        //loop-move towards right and calculate the max columns inside
+        //loop-move down and match the max columns inside
+        //when break-> make all 1 selection, update node as not selected and loop again on nodes 
         return selectedCrops
       }
-      else if(this.keepOriginalCells==false)
-      {
-        return []
+      else if (this.keepOriginalCells == false) {
+        //write code here for making blocks for selected cell
+        return selectedCrops
       }
     }
     return []
@@ -779,7 +776,6 @@ export class AppServiceService {
       tableCopy.CalculateBbox()
 
       //remove the old table
-      this.context?.RemoveObject((table as Table)?.id)
 
       //crop variables
       let tabelCropObj = this.getTableCrop((table as Table));
@@ -803,6 +799,7 @@ export class AppServiceService {
 
       this.selectedCells=this.getSelectedCellCrops()
       console.log(this.selectedCells);
+      this.context?.RemoveObject((table as Table)?.id)
       return;
 
       let formData = new FormData();
